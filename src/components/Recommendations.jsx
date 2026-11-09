@@ -66,9 +66,8 @@ export function Recommendations({ onSelectProduct, theme = 'light' }) {
                   className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 p-1 sm:p-1.5 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur-xs transition-transform hover:scale-110 active:scale-90 z-10 shadow-2xs cursor-pointer"
                 >
                   <Heart
-                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
-                      isFav ? 'fill-red-500 text-red-500' : 'text-zinc-600 dark:text-zinc-300'
-                    }`}
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isFav ? 'fill-red-500 text-red-500' : 'text-zinc-600 dark:text-zinc-300'
+                      }`}
                   />
                 </button>
 
