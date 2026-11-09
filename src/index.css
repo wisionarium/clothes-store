@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #fafaf9;
+  --app-text: #18181b;
+  --header-bg: rgba(255, 255, 255, 0.85);
+  --header-border: #eae8e1;
+  --card-bg: #f2f1ec;
+  --card-border: #e2dfd5;
+  --spec-bg: #f7f6f2;
+  --box-bg: #ffffff;
+}
+
+html.dark {
+  /* Cinza escuro elegante conforme solicitado (não preto puro) */
+  --app-bg: #1f2125;
+  --app-text: #f3f4f6;
+  --header-bg: rgba(33, 35, 40, 0.9);
+  --header-border: #33363e;
+  --card-bg: #27292e;
+  --card-border: #363942;
+  --spec-bg: #26282e;
+  --box-bg: #2a2d33;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  transition: background-color 0.25s ease, color 0.25s ease;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 22s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Utilitário para ocultar barra de rolagem em carrosséis horizontais mantendo o scroll suave */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
