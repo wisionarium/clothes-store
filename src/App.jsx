@@ -18,11 +18,11 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('todos');
 
-  // Inicializa o tema a partir do localStorage ou preferência do sistema
+  // Inicializa o tema: padrão escuro (dark) conforme solicitado
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('korvo-theme');
     if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return 'dark';
   });
 
   // Atualiza a classe 'dark' no elemento raiz do documento
