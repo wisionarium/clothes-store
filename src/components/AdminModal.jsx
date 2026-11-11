@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../data/storeConfig';
+import { CATALOG_PRODUCTS } from '../data/catalog';
 
 export function AdminModal({
   isOpen,
@@ -121,13 +122,15 @@ export function AdminModal({
           // Atualiza o catálogo local com os produtos reais da Nuvemshop
           setLocalCatalog(data.products);
           
-          // Ativa a Nuvemshop nas configurações automaticamente
+          // Ativa a Nuvemshop e sincroniza a logo e nome da loja automaticamente
           const updatedConfig = {
             ...localConfig,
             nuvemshop: {
               ...localConfig.nuvemshop,
               enabled: true,
             },
+            logoUrl: data.storeLogo || localConfig.logoUrl || '',
+            storeName: data.storeName || localConfig.storeName || 'clothes.on',
           };
           setLocalConfig(updatedConfig);
 
@@ -137,7 +140,7 @@ export function AdminModal({
 
           setSyncResult({
             success: true,
-            message: `${data.products.length} peças e acessórios importados com sucesso! Fotos, preços, tamanhos e tags foram atualizados na vitrine.`,
+            message: `${data.products.length} peças e acessórios importados com sucesso! ${data.storeLogo ? 'A logo oficial da sua loja Nuvemshop também foi importada automaticamente.' : ''}`,
             count: data.products.length,
           });
         }
@@ -154,6 +157,35 @@ export function AdminModal({
       });
     } finally {
       setIsSyncingNuvem(false);
+    }
+  };
+
+  // Desconectar Nuvemshop e restaurar catálogo padrão para deixar limpo para o cliente
+  const handleDisconnectNuvemshop = () => {
+    if (
+      window.confirm(
+        'Tem certeza que deseja desconectar a Nuvemshop e apagar os dados de teste? Isso vai limpar o Store ID, Access Token e restaurar os produtos padrão da vitrine para deixar o sistema pronto e limpo para o seu cliente.'
+      )
+    ) {
+      const resetConfig = {
+        ...localConfig,
+        nuvemshop: {
+          enabled: false,
+          storeUrl: '',
+          storeId: '',
+          accessToken: '',
+          checkoutMode: 'redirect_cart',
+        },
+      };
+      setLocalConfig(resetConfig);
+      setLocalCatalog(CATALOG_PRODUCTS);
+      onSaveConfig(resetConfig);
+      onSaveCatalog(CATALOG_PRODUCTS);
+      setSyncResult({
+        success: true,
+        message: 'Loja Nuvemshop desconectada com sucesso! Credenciais e produtos de teste foram apagados.',
+      });
+      setTestResult(null);
     }
   };
 
@@ -223,6 +255,23 @@ export function AdminModal({
     reader.onload = (e) => {
       const dataUrl = e.target.result;
       handleShirtChange(index, 'image', dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoFileUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A logo é muito pesada (máximo 5MB). Escolha uma imagem menor.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      setLocalConfig((prev) => ({ ...prev, logoUrl: dataUrl }));
     };
     reader.readAsDataURL(file);
   };
@@ -455,48 +504,111 @@ export function AdminModal({
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {localShirts.map((shirt, idx) => (
                         <div
                           key={shirt.id}
-                          className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                          className="p-3.5 rounded-xl border flex flex-col gap-3 transition-colors"
                           style={{
                             backgroundColor: isDark ? '#27292f' : '#f9f8f4',
                             borderColor: isDark ? '#363942' : '#e5e7eb',
                           }}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 rounded bg-orange-600/20 text-orange-500 font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                              {shirt.num}
-                            </span>
-                            <div className="min-w-0">
-                              <input
-                                type="text"
-                                value={shirt.name}
-                                onChange={(e) => handleShirtChange(idx, 'name', e.target.value)}
-                                className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[200px]"
-                              />
-                              <span className="text-[10px] font-mono opacity-60 block mt-0.5">
-                                {shirt.category}
-                              </span>
-                            </div>
-                          </div>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {/* Miniatura da Camisa */}
+                              <div
+                                className="w-12 h-14 rounded-lg overflow-hidden border shrink-0 flex items-center justify-center relative bg-black/10"
+                                style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
+                              >
+                                {shirt.image && typeof shirt.image === 'string' ? (
+                                  <img
+                                    src={shirt.image}
+                                    alt={shirt.name}
+                                    className="w-full h-full object-contain p-1"
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-5 h-5 opacity-40" />
+                                )}
+                              </div>
 
-                          <div className="flex items-center gap-3 self-end sm:self-auto">
-                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded bg-orange-600/20 text-orange-500 font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
+                                    {shirt.num}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={shirt.name}
+                                    onChange={(e) => handleShirtChange(idx, 'name', e.target.value)}
+                                    className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[240px]"
+                                  />
+                                </div>
+                                <span className="text-[10px] font-mono opacity-60 block mt-0.5">
+                                  {shirt.category}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                               <span className="text-xs font-mono opacity-70">R$</span>
                               <input
                                 type="number"
                                 step="0.01"
                                 value={shirt.price}
                                 onChange={(e) => handleShirtChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                                className="w-20 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
+                                className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
                                 style={{
                                   backgroundColor: isDark ? '#18191d' : '#ffffff',
                                   borderColor: isDark ? '#363942' : '#d4d4d8',
                                 }}
                               />
                             </div>
+                          </div>
+
+                          {/* Linha 2: Controle de Foto da Camisa (Upload ou Link Direto) */}
+                          <div
+                            className="pt-2 border-t flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-[11px] font-mono"
+                            style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}
+                          >
+                            <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 font-medium"
+                              style={{
+                                borderColor: isDark ? '#434752' : '#d4d4d8',
+                                backgroundColor: isDark ? '#1c1e22' : '#ffffff',
+                              }}
+                            >
+                              <Upload className="w-3.5 h-3.5 text-orange-500" />
+                              <span>Upload Foto</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleShirtFileUpload(idx, e)}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <input
+                              type="text"
+                              placeholder="ou cole a URL da foto (PNG transparente)"
+                              value={shirt.image && typeof shirt.image === 'string' ? shirt.image : ''}
+                              onChange={(e) => handleShirtChange(idx, 'image', e.target.value)}
+                              className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none text-[11px]"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+
+                            {shirt.image && (
+                              <button
+                                type="button"
+                                onClick={() => handleShirtChange(idx, 'image', '')}
+                                title="Limpar Foto"
+                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0 self-end sm:self-auto"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -655,24 +767,128 @@ export function AdminModal({
                     </div>
 
                     <div className="space-y-4 text-xs font-sans">
-                      <div>
-                        <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
-                          Nome da Loja / Marca do Cliente (White-Label)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="ex: Clothes.on ou Nome da Sua Marca"
-                          value={localConfig.storeName || ''}
-                          onChange={(e) => setLocalConfig({ ...localConfig, storeName: e.target.value })}
-                          className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
-                          style={{
-                            backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
-                            borderColor: isDark ? '#363942' : '#d4d4d8',
-                          }}
-                        />
-                        <span className="text-[10px] font-mono opacity-60 block mt-1">
-                          Este nome substitui a marca em todo o site: topo, rodapé, sacola e mensagens do WhatsApp.
-                        </span>
+                      {/* Upload / URL da Logo da Marca */}
+                      <div
+                        className="p-3.5 rounded-xl border space-y-3"
+                        style={{
+                          borderColor: isDark ? '#363942' : '#e4e4e7',
+                          backgroundColor: isDark ? '#202227' : '#fcfcfc',
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-[11px] font-mono uppercase tracking-wider block font-bold text-orange-500">
+                              Logo da Loja (Substitui o nome no Cabeçalho e Rodapé)
+                            </label>
+                            <span className="text-[10px] font-mono opacity-60 block mt-0.5">
+                              Puxe automaticamente da Nuvemshop ou envie o arquivo da logo do seu cliente.
+                            </span>
+                          </div>
+                          {localConfig.logoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setLocalConfig({ ...localConfig, logoUrl: '' })}
+                              className="px-2 py-1 rounded text-[10px] font-mono text-red-400 hover:bg-red-500/10 flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" /> Remover Logo
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                          {/* Preview da Logo */}
+                          <div
+                            className="w-36 h-16 rounded-lg border flex items-center justify-center p-2 shrink-0 overflow-hidden"
+                            style={{
+                              backgroundColor: isDark ? '#141518' : '#f0f0ed',
+                              borderColor: isDark ? '#33363e' : '#d4d4d8',
+                            }}
+                          >
+                            {localConfig.logoUrl ? (
+                              <img
+                                src={localConfig.logoUrl}
+                                alt="Logo Preview"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            ) : (
+                              <span className="text-xs font-mono font-bold opacity-40 uppercase">
+                                {localConfig.storeName || 'clothes.on'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 w-full space-y-2">
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-orange-600 hover:bg-orange-500 text-white cursor-pointer transition-colors shrink-0 shadow-xs">
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Upload Imagem</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleLogoFileUpload}
+                                  className="hidden"
+                                />
+                              </label>
+                              <span className="text-[10px] font-mono opacity-50">ou cole o link da foto abaixo:</span>
+                            </div>
+
+                            <input
+                              type="text"
+                              placeholder="https://exemplo.com/logo-da-marca.png"
+                              value={localConfig.logoUrl || ''}
+                              onChange={(e) => setLocalConfig({ ...localConfig, logoUrl: e.target.value })}
+                              className="w-full px-3 py-1.5 rounded-lg text-xs font-mono border outline-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Nome da Loja & Tema Inicial */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
+                            Nome da Loja / Marca do Cliente (White-Label)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="ex: Clothes.on ou Nome da Sua Marca"
+                            value={localConfig.storeName || ''}
+                            onChange={(e) => setLocalConfig({ ...localConfig, storeName: e.target.value })}
+                            className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
+                            style={{
+                              backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
+                              borderColor: isDark ? '#363942' : '#d4d4d8',
+                            }}
+                          />
+                          <span className="text-[10px] font-mono opacity-60 block mt-1">
+                            Usado quando não houver imagem de logo definida.
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
+                            Tema Inicial da Loja (Ao Abrir o Site)
+                          </label>
+                          <select
+                            value={localConfig.defaultTheme || 'dark'}
+                            onChange={(e) => setLocalConfig({ ...localConfig, defaultTheme: e.target.value })}
+                            className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
+                            style={{
+                              backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
+                              borderColor: isDark ? '#363942' : '#d4d4d8',
+                            }}
+                          >
+                            <option value="dark">Modo Escuro / Noturno (Padrão)</option>
+                            <option value="light">Modo Claro</option>
+                          </select>
+                          <span className="text-[10px] font-mono opacity-60 block mt-1">
+                            Define qual tema será exibido na primeira visita do cliente.
+                          </span>
+                        </div>
                       </div>
 
                       <div>
@@ -994,6 +1210,37 @@ export function AdminModal({
                           />
                           <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
+                      </div>
+
+                      {/* Desconectar e Limpar Loja de Teste */}
+                      <div
+                        className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4"
+                        style={{
+                          backgroundColor: isDark ? '#261616' : '#fef2f2',
+                          borderColor: isDark ? '#7f1d1d' : '#fecaca',
+                        }}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-red-500 font-bold text-xs uppercase font-mono">
+                              🔌 Desconectar Loja & Limpar Dados de Teste
+                            </span>
+                          </div>
+                          <span
+                            className="text-[11px] font-mono opacity-80 block mt-0.5"
+                            style={{ color: isDark ? '#fca5a5' : '#991b1b' }}
+                          >
+                            Apaga o Store ID, Access Token e restaura as peças de demonstração da vitrine para que você possa transferir a loja 100% limpa ao cliente final.
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleDisconnectNuvemshop}
+                          className="px-3.5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-all active:scale-95 shrink-0 shadow-xs"
+                        >
+                          Desconectar & Limpar
+                        </button>
                       </div>
                     </div>
                   </div>

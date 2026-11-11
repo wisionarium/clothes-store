@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { GarmentItem } from './GarmentItem';
 
-export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, marqueeText, theme = 'light' }) {
+export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, marqueeText, theme = 'light', storeName }) {
   const isDark = theme === 'dark';
   const containerRef = useRef(null);
   const railItemsRef = useRef(null);
@@ -220,7 +220,7 @@ export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, m
       {/* Subtítulo superior */}
       <div className="text-center mb-3 sm:mb-6 px-3">
         <span className="text-[10px] sm:text-[11px] font-mono tracking-[0.2em] sm:tracking-[0.25em] text-zinc-400 uppercase font-medium">
-          ON THE RAIL &nbsp;|&nbsp; ESSENTIALS APPAREL COLLECTION
+          ON THE RAIL &nbsp;|&nbsp; {storeName ? storeName.toUpperCase() : 'CLOTHES.ON'} / ESSENTIALS APPAREL
         </span>
       </div>
 

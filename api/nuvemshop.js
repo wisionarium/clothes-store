@@ -73,6 +73,28 @@ export default async function handler(req, res) {
 
       const rawProducts = await nuvemRes.json();
 
+      // Busca informações da loja para trazer a logo oficial do cliente na Nuvemshop
+      let storeLogo = null;
+      let storeNameFromNuvem = null;
+      try {
+        const storeInfoRes = await fetch(`https://api.tiendanube.com/v1/${cleanStoreId}`, {
+          headers: {
+            'Authentication': `bearer ${cleanToken}`,
+            'User-Agent': 'Clothes.on Store Engine (contato@clotheson.com.br)',
+            'Content-Type': 'application/json',
+          },
+        });
+        if (storeInfoRes.ok) {
+          const storeData = await storeInfoRes.json();
+          storeNameFromNuvem = storeData.name?.pt || storeData.name?.es || (typeof storeData.name === 'string' ? storeData.name : null);
+          if (storeData.logo) {
+            storeLogo = typeof storeData.logo === 'string' ? storeData.logo : storeData.logo.src || storeData.logo.url || null;
+          }
+        }
+      } catch (err) {
+        console.warn('Não foi possível obter logo da loja Nuvemshop:', err);
+      }
+
       // Mapeamento Inteligente para a Vitrine de Roupas & Acessórios
       const mappedProducts = (Array.isArray(rawProducts) ? rawProducts : []).map((item) => {
         const name = item.name?.pt || item.name?.es || (typeof item.name === 'string' ? item.name : 'Peça de Vestuário');
@@ -167,6 +189,8 @@ export default async function handler(req, res) {
         success: true,
         count: mappedProducts.length,
         products: mappedProducts,
+        storeLogo,
+        storeName: storeNameFromNuvem,
       });
     }
 

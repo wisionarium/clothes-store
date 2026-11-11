@@ -10,6 +10,8 @@ const STORAGE_KEYS = {
 
 export const DEFAULT_CONFIG = {
   storeName: 'clothes.on',
+  logoUrl: '', // URL ou imagem base64 da Logo do cliente
+  defaultTheme: 'dark', // 'dark' | 'light' - Tema inicial do site
   adminPin: '1234',
   marqueeText: 'CLOTHES.ON · HEAVY STREETWEAR & ESSENTIALS + 100% PREMIUM COTTON + HEAVY ROBUST FIT + NO NOISE, PURE FORM + BUILT TO BE WORN HARD +',
   freeShippingThreshold: 299,
@@ -34,9 +36,23 @@ export const DEFAULT_CONFIG = {
 // Carrega configurações da loja
 export function getStoredConfig() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CONFIG) || localStorage.getItem('levant_store_config');
-    if (!raw) return DEFAULT_CONFIG;
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const raw = localStorage.getItem(STORAGE_KEYS.CONFIG);
+    if (!raw) {
+      const oldRaw = localStorage.getItem('levant_store_config');
+      if (oldRaw) {
+        const oldParsed = JSON.parse(oldRaw);
+        if (oldParsed?.storeName && oldParsed.storeName.toLowerCase() === 'levant') {
+          oldParsed.storeName = 'clothes.on';
+        }
+        return { ...DEFAULT_CONFIG, ...oldParsed };
+      }
+      return DEFAULT_CONFIG;
+    }
+    const parsed = JSON.parse(raw);
+    if (parsed?.storeName && parsed.storeName.toLowerCase() === 'levant') {
+      parsed.storeName = 'clothes.on';
+    }
+    return { ...DEFAULT_CONFIG, ...parsed };
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -130,7 +146,12 @@ export async function fetchRemoteStoreData() {
       const { config, shirts, catalog } = json.data;
 
       // Sincroniza localmente para carregar instantaneamente nos próximos acessos
-      if (config) saveStoredConfig(config);
+      if (config) {
+        if (config.storeName && config.storeName.toLowerCase() === 'levant') {
+          config.storeName = 'clothes.on';
+        }
+        saveStoredConfig(config);
+      }
       if (shirts && Array.isArray(shirts) && shirts.length > 0) saveStoredShirts(shirts);
       if (catalog && Array.isArray(catalog) && catalog.length > 0) saveStoredCatalog(catalog);
 

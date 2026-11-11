@@ -12,7 +12,7 @@ function InstagramIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin, theme = 'light' }) {
+export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin, theme = 'light', storeName, logoUrl }) {
   const isDark = theme === 'dark';
 
   const categories = [
@@ -60,12 +60,24 @@ export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin,
               style={{ borderColor: isDark ? '#363942' : '#e4e4e7' }}
             >
               <div className="flex items-center gap-3">
-                <span
-                  className="text-lg font-mono font-black tracking-tight uppercase"
-                  style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-                >
-                  clothes<span className="text-orange-500">.on</span>
-                </span>
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={storeName || "Logo"}
+                    className="h-6 sm:h-7 max-w-[160px] object-contain"
+                  />
+                ) : (
+                  <span
+                    className="text-lg font-mono font-black tracking-tight uppercase"
+                    style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+                  >
+                    {(!storeName || storeName.toLowerCase() === 'clothes.on') ? (
+                      <>clothes<span className="text-orange-500">.on</span></>
+                    ) : (
+                      storeName
+                    )}
+                  </span>
+                )}
               </div>
 
               <button

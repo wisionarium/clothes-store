@@ -77,12 +77,19 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Inicializa o tema: padrão escuro (dark) conforme solicitado
+  // Inicializa o tema: usa preferência salva ou o padrão configurado no Admin
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('korvo-theme');
     if (saved) return saved;
-    return 'dark';
+    return storeConfig?.defaultTheme || 'dark';
   });
+
+  // Atualiza o tema se o lojista alterar nas configurações do Admin
+  useEffect(() => {
+    if (storeConfig?.defaultTheme && !localStorage.getItem('korvo-theme-manual')) {
+      setTheme(storeConfig.defaultTheme);
+    }
+  }, [storeConfig?.defaultTheme]);
 
   // Atualiza a classe 'dark' no elemento raiz do documento
   useEffect(() => {
@@ -95,6 +102,7 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => {
+    localStorage.setItem('korvo-theme-manual', 'true');
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
@@ -196,6 +204,8 @@ export default function App() {
         }}
         theme={theme}
         onToggleTheme={toggleTheme}
+        storeName={storeConfig.storeName}
+        logoUrl={storeConfig.logoUrl}
       />
 
       {/* Menu Lateral Deslizante da Esquerda */}
@@ -205,6 +215,8 @@ export default function App() {
         onSelectCategory={handleCategorySelect}
         onOpenAdmin={() => setIsAdminOpen(true)}
         theme={theme}
+        storeName={storeConfig.storeName}
+        logoUrl={storeConfig.logoUrl}
       />
 
       {/* Conteúdo Principal */}
@@ -227,6 +239,7 @@ export default function App() {
                 }}
                 marqueeText={storeConfig.marqueeText}
                 theme={theme}
+                storeName={storeConfig.storeName}
               />
 
               {/* Catálogo Completo Logo Abaixo da Arara (Calças, Bermudas & Casacos) */}
@@ -265,7 +278,14 @@ export default function App() {
       </main>
 
       {/* Rodapé Completo da Loja Online com link para ADM */}
-      <Footer onOpenAdmin={() => setIsAdminOpen(true)} theme={theme} />
+      <Footer
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        theme={theme}
+        storeName={storeConfig.storeName}
+        logoUrl={storeConfig.logoUrl}
+        contactEmail={storeConfig.contactEmail}
+        whatsappNumber={storeConfig.whatsappNumber}
+      />
 
       {/* Gaveta Lateral de Sacola / Carrinho */}
       <EditDrawer

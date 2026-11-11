@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Check, ShieldCheck, RefreshCw, Truck } from 'lucide-react';
 
-export function Footer({ onOpenAdmin, theme = 'light' }) {
+export function Footer({ onOpenAdmin, theme = 'light', storeName, logoUrl, contactEmail, whatsappNumber }) {
   const isDark = theme === 'dark';
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -79,12 +79,24 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
         {/* Bloco 1: Marca & Newsletter */}
         <div className="md:col-span-5 flex flex-col justify-between">
           <div>
-            <span
-              className="text-xl font-mono font-black tracking-tight uppercase block mb-3"
-              style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-            >
-              clothes<span className="text-orange-500">.on</span>
-            </span>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={storeName || "Logo"}
+                className="h-7 sm:h-8 max-w-[180px] object-contain mb-3"
+              />
+            ) : (
+              <span
+                className="text-xl font-mono font-black tracking-tight uppercase block mb-3"
+                style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+              >
+                {(!storeName || storeName.toLowerCase() === 'clothes.on') ? (
+                  <>clothes<span className="text-orange-500">.on</span></>
+                ) : (
+                  storeName
+                )}
+              </span>
+            )}
             <p className="text-xs leading-relaxed max-w-sm font-sans mb-6 opacity-85">
               Marca autoral brasileira focada em silhuetas estruturadas, tecidos densos e estética minimalista contemporânea.
             </p>
@@ -152,8 +164,8 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
           <p className="cursor-pointer hover:text-orange-500 transition-colors">Guia de Caimento e Tamanhos</p>
           <p className="cursor-pointer hover:text-orange-500 transition-colors">Política de Trocas e Devoluções</p>
           <p className="cursor-pointer hover:text-orange-500 transition-colors">Termos de Uso e Privacidade</p>
-          <p className="cursor-pointer hover:text-orange-500 transition-colors">WhatsApp: (11) 99999-0000</p>
-          <p className="cursor-pointer hover:text-orange-500 transition-colors">E-mail: contato@clotheson.com.br</p>
+          <p className="cursor-pointer hover:text-orange-500 transition-colors">WhatsApp: {whatsappNumber || '(11) 99999-0000'}</p>
+          <p className="cursor-pointer hover:text-orange-500 transition-colors">E-mail: {contactEmail || 'contato@clotheson.com.br'}</p>
         </div>
       </div>
 
@@ -162,7 +174,7 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
         className="border-t py-6 px-4 flex flex-col sm:flex-row items-center justify-between text-xs font-mono transition-colors max-w-6xl mx-auto gap-2"
         style={{ borderColor: isDark ? '#2b2d35' : '#e5e3dc', color: isDark ? '#7a808c' : '#a1a1aa' }}
       >
-        <p>© 2026 clothes.on · Todos os direitos reservados</p>
+        <p>© 2026 {storeName || 'clothes.on'} · Todos os direitos reservados</p>
         <button
           onClick={onOpenAdmin}
           className="hover:text-orange-500 transition-colors cursor-pointer opacity-70 hover:opacity-100 flex items-center gap-1"

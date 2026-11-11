@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, Sun, Moon, ShoppingBag, User } from 'lucide-react';
 
-export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpenAdmin, theme = 'light', onToggleTheme }) {
+export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpenAdmin, theme = 'light', onToggleTheme, storeName, logoUrl }) {
   const isDark = theme === 'dark';
 
   return (
@@ -22,17 +22,30 @@ export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpen
         </button>
       </div>
 
-      {/* Logo CLOTHES.ON Central (White-label moderno) */}
+      {/* Logo Central (Foto da Logo ou Texto Dinâmico White-Label) */}
       <div
         onClick={onGoHome}
         className="cursor-pointer flex items-center justify-center select-none group py-1"
-        title="clothes.on"
+        title={storeName || "clothes.on"}
       >
-        <span className="text-lg sm:text-2xl font-mono font-black tracking-tight uppercase transition-colors"
-          style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-        >
-          clothes<span className="text-orange-500">.on</span>
-        </span>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={storeName || "Logo"}
+            className="h-6 sm:h-8 max-w-[180px] sm:max-w-[220px] object-contain transition-transform duration-200 group-hover:scale-105"
+          />
+        ) : (
+          <span
+            className="text-lg sm:text-2xl font-mono font-black tracking-tight uppercase transition-colors"
+            style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+          >
+            {(!storeName || storeName.toLowerCase() === 'clothes.on') ? (
+              <>clothes<span className="text-orange-500">.on</span></>
+            ) : (
+              storeName
+            )}
+          </span>
+        )}
       </div>
 
       {/* Canto Direito: Tema (Sol/Lua) + Carrinho de Compras + Ícone de Perfil */}
