@@ -6,17 +6,59 @@ import { ClothesRail } from './components/ClothesRail';
 import { ProductCatalog } from './components/ProductCatalog';
 import { ProductDetail } from './components/ProductDetail';
 import { EditDrawer } from './components/EditDrawer';
+import { CheckoutModal } from './components/CheckoutModal';
+import { AdminModal } from './components/AdminModal';
 import { Footer } from './components/Footer';
-import { PRODUCTS } from './data/products';
+import {
+  getStoredConfig,
+  saveStoredConfig,
+  getStoredShirts,
+  saveStoredShirts,
+  getStoredCatalog,
+  saveStoredCatalog,
+  getStoredCart,
+  saveStoredCart,
+  resetAllToDefaults,
+} from './data/storeConfig';
 
 export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState('rail'); // 'rail' | 'detail'
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [editItems, setEditItems] = useState([]);
+
+  // Estados Dinâmicos da Loja (Persistidos no localStorage sem precisar de banco agora)
+  const [storeConfig, setStoreConfig] = useState(getStoredConfig);
+  const [shirts, setShirts] = useState(getStoredShirts);
+  const [catalog, setCatalog] = useState(getStoredCatalog);
+
+  // Carrinho de Compras Persistente
+  const [editItems, setEditItems] = useState(getStoredCart);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Modais de Checkout e Administração
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutData, setCheckoutData] = useState({ subtotal: 0, shippingValue: 0, shippingMethod: 'pac' });
+
   const [selectedCategory, setSelectedCategory] = useState('todos');
+
+  // Salva carrinho no localStorage sempre que mudar
+  useEffect(() => {
+    saveStoredCart(editItems);
+  }, [editItems]);
+
+  // Listener para abrir admin via URL hash (#admin)
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#admin') {
+        setIsAdminOpen(true);
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Inicializa o tema: padrão escuro (dark) conforme solicitado
   const [theme, setTheme] = useState(() => {
@@ -39,11 +81,33 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const currentShirt = PRODUCTS[currentIndex] || PRODUCTS[0];
+  const currentShirt = shirts[currentIndex] || shirts[0];
   const activeProduct = selectedProduct || currentShirt;
 
+  // Gerenciamento do Carrinho
   const handleAddToEdit = (item) => {
-    setEditItems((prev) => [...prev, item]);
+    setEditItems((prev) => {
+      // Se a mesma peça com mesmo tamanho e cor já existir, incrementa a quantidade
+      const existingIdx = prev.findIndex(
+        (i) => i.id === item.id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor
+      );
+      if (existingIdx !== -1) {
+        const copy = [...prev];
+        copy[existingIdx].quantity = (copy[existingIdx].quantity || 1) + (item.quantity || 1);
+        return copy;
+      }
+      return [...prev, item];
+    });
+  };
+
+  const handleUpdateQuantity = (index, newQty) => {
+    setEditItems((prev) => {
+      const copy = [...prev];
+      if (copy[index]) {
+        copy[index].quantity = newQty;
+      }
+      return copy;
+    });
   };
 
   const handleRemoveFromEdit = (index) => {
@@ -52,6 +116,29 @@ export default function App() {
 
   const handleClearEdit = () => {
     setEditItems([]);
+  };
+
+  // Funções de Administração
+  const handleSaveConfig = (newConfig) => {
+    setStoreConfig(newConfig);
+    saveStoredConfig(newConfig);
+  };
+
+  const handleSaveShirts = (newShirts) => {
+    setShirts(newShirts);
+    saveStoredShirts(newShirts);
+  };
+
+  const handleSaveCatalog = (newCatalog) => {
+    setCatalog(newCatalog);
+    saveStoredCatalog(newCatalog);
+  };
+
+  const handleResetDefaults = () => {
+    resetAllToDefaults();
+    setStoreConfig(getStoredConfig());
+    setShirts(getStoredShirts());
+    setCatalog(getStoredCatalog());
   };
 
   const handleCategorySelect = (category) => {
@@ -78,9 +165,10 @@ export default function App() {
     >
       {/* Header Fixo / Superior */}
       <Header
-        editCount={editItems.length}
+        editCount={editItems.reduce((acc, i) => acc + (i.quantity || 1), 0)}
         onOpenEdit={() => setIsEditOpen(true)}
         onOpenMenu={() => setIsMenuOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         onGoHome={() => {
           setViewMode('rail');
           setSelectedProduct(null);
@@ -90,11 +178,12 @@ export default function App() {
         onToggleTheme={toggleTheme}
       />
 
-      {/* Menu Lateral Deslizante da Esquerda (abre da esquerda pra direita sem mudar a estrutura do site) */}
+      {/* Menu Lateral Deslizante da Esquerda */}
       <NavigationMenu
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onSelectCategory={handleCategorySelect}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         theme={theme}
       />
 
@@ -103,9 +192,9 @@ export default function App() {
         <AnimatePresence mode="wait">
           {viewMode === 'rail' ? (
             <div key="home-view" className="w-full flex flex-col items-center">
-              {/* Arara de Roupas Interativa (100% preservada, sem nenhuma alteração) */}
+              {/* Arara de Roupas Interativa com dados dinâmicos do Admin */}
               <ClothesRail
-                products={PRODUCTS}
+                products={shirts}
                 currentIndex={currentIndex}
                 onSelectIndex={(newIdx) => {
                   setCurrentIndex(newIdx);
@@ -116,11 +205,13 @@ export default function App() {
                   setViewMode('detail');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                marqueeText={storeConfig.marqueeText}
                 theme={theme}
               />
 
               {/* Catálogo Completo Logo Abaixo da Arara (Calças, Bermudas & Casacos) */}
               <ProductCatalog
+                products={catalog}
                 onSelectProduct={(prod) => {
                   setSelectedProduct(prod);
                   setViewMode('detail');
@@ -153,16 +244,56 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Rodapé Completo da Loja Online */}
-      <Footer theme={theme} />
+      {/* Rodapé Completo da Loja Online com link para ADM */}
+      <Footer onOpenAdmin={() => setIsAdminOpen(true)} theme={theme} />
 
-      {/* Gaveta Lateral de Curadoria (EDIT) */}
+      {/* Gaveta Lateral de Sacola / Carrinho */}
       <EditDrawer
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         items={editItems}
+        onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromEdit}
         onClear={handleClearEdit}
+        onOpenCheckout={(data) => {
+          setCheckoutData(data);
+          setIsCheckoutOpen(true);
+        }}
+        storeConfig={storeConfig}
+        theme={theme}
+      />
+
+      {/* Modal de Checkout (PIX, Cartão, Nuvemshop & WhatsApp) */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        items={editItems}
+        total={checkoutData.subtotal}
+        shippingValue={checkoutData.shippingValue}
+        shippingMethod={checkoutData.shippingMethod}
+        storeConfig={storeConfig}
+        onOrderCompleted={() => {
+          handleClearEdit();
+        }}
+        theme={theme}
+      />
+
+      {/* Modal / Painel de Administração do Lojista */}
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => {
+          setIsAdminOpen(false);
+          if (window.location.hash === '#admin') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }}
+        config={storeConfig}
+        onSaveConfig={handleSaveConfig}
+        shirts={shirts}
+        onSaveShirts={handleSaveShirts}
+        catalog={catalog}
+        onSaveCatalog={handleSaveCatalog}
+        onResetDefaults={handleResetDefaults}
         theme={theme}
       />
     </div>

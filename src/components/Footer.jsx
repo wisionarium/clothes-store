@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Check, ShieldCheck, RefreshCw, Truck } from 'lucide-react';
 
-export function Footer({ theme = 'light' }) {
+export function Footer({ onOpenAdmin, theme = 'light' }) {
   const isDark = theme === 'dark';
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -158,10 +158,16 @@ export function Footer({ theme = 'light' }) {
 
       {/* Copyright e Assinatura */}
       <div
-        className="border-t py-6 text-center text-xs font-mono transition-colors"
+        className="border-t py-6 px-4 flex flex-col sm:flex-row items-center justify-between text-xs font-mono transition-colors max-w-6xl mx-auto gap-2"
         style={{ borderColor: isDark ? '#2b2d35' : '#e5e3dc', color: isDark ? '#7a808c' : '#a1a1aa' }}
       >
-        <p>© 2026 LEVANT STUDIO LTDA · Todos os direitos reservados · CNPJ 00.000.000/0001-00</p>
+        <p>© 2026 LEVANT STUDIO LTDA · Todos os direitos reservados</p>
+        <button
+          onClick={onOpenAdmin}
+          className="hover:text-orange-500 transition-colors cursor-pointer opacity-70 hover:opacity-100 flex items-center gap-1"
+        >
+          <span>⚙️ Área do Lojista</span>
+        </button>
       </div>
     </footer>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, Sun, Moon, ShoppingBag, User } from 'lucide-react';
 
-export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, theme = 'light', onToggleTheme }) {
+export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpenAdmin, theme = 'light', onToggleTheme }) {
   const isDark = theme === 'dark';
 
   return (
@@ -66,10 +66,12 @@ export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, theme 
           )}
         </button>
 
-        {/* Ícone de Perfil / Usuário Anônimo no Canto Direito */}
+        {/* Ícone de Perfil / Acesso ADM no Canto Direito */}
         <button
-          onClick={() => alert('Área do Cliente: Login / Meus Pedidos')}
-          title="Minha Conta / Entrar"
+          onClick={() => {
+            if (onOpenAdmin) onOpenAdmin();
+          }}
+          title="Painel do Lojista (ADM) / Conta"
           className="p-1.5 sm:p-2 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer hover:opacity-80"
           style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
         >

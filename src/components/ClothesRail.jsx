@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { GarmentItem } from './GarmentItem';
 
-export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, theme = 'light' }) {
+export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, marqueeText, theme = 'light' }) {
   const isDark = theme === 'dark';
   const containerRef = useRef(null);
   const railItemsRef = useRef(null);
@@ -361,7 +361,7 @@ export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, t
               key={key}
               className="text-[10px] sm:text-xs font-black tracking-widest text-zinc-950 uppercase font-mono px-4 select-none"
             >
-              LEVANT · CONCRETE SEASON N° 01 &nbsp;+&nbsp; ON LOOKS, BE HYPER &nbsp;+&nbsp; TAKE IT TO 100% WASH SAND &nbsp;+&nbsp; FAULT HEAVY &nbsp;+&nbsp; ROBUST FIT &nbsp;+&nbsp; NO LOGOS, NO NOISE &nbsp;+&nbsp; MADE TO BE WORN HARD &nbsp;+&nbsp; BUILT HEAVY &nbsp;+&nbsp;
+              {marqueeText || 'LEVANT · CONCRETE SEASON N° 01  +  ON LOOKS, BE HYPER  +  TAKE IT TO 100% WASH SAND  +  FAULT HEAVY  +  ROBUST FIT  +  NO LOGOS, NO NOISE  +  MADE TO BE WORN HARD  +  BUILT HEAVY  + '}
             </span>
           ))}
         </div>

@@ -3,7 +3,7 @@ import { Heart } from 'lucide-react';
 import { CATALOG_PRODUCTS } from '../data/catalog';
 import { ProductPlaceholder } from './ProductPlaceholder';
 
-export function ProductCatalog({ onSelectProduct, selectedCategory = 'todos', onCategoryChange, theme = 'light' }) {
+export function ProductCatalog({ products = CATALOG_PRODUCTS, onSelectProduct, selectedCategory = 'todos', onCategoryChange, theme = 'light' }) {
   const isDark = theme === 'dark';
   const [favorites, setFavorites] = useState({});
 
@@ -15,8 +15,8 @@ export function ProductCatalog({ onSelectProduct, selectedCategory = 'todos', on
   ];
 
   const filteredProducts = selectedCategory === 'todos'
-    ? CATALOG_PRODUCTS
-    : CATALOG_PRODUCTS.filter((p) => p.category === selectedCategory);
+    ? products
+    : products.filter((p) => p.category === selectedCategory);
 
   const toggleFavorite = (id, e) => {
     e.stopPropagation();

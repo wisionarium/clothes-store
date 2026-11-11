@@ -12,7 +12,7 @@ function InstagramIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export function NavigationMenu({ isOpen, onClose, onSelectCategory, theme = 'light' }) {
+export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin, theme = 'light' }) {
   const isDark = theme === 'dark';
 
   const categories = [
@@ -161,10 +161,31 @@ export function NavigationMenu({ isOpen, onClose, onSelectCategory, theme = 'lig
 
               {/* Rodapé do Menu com Links de Suporte e Redes */}
               <div
-                className="border-t pt-5 mt-6 transition-colors"
+                className="border-t pt-4 mt-6 transition-colors space-y-3"
                 style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}
               >
-                <div className="flex items-center justify-between text-xs font-mono">
+                {/* Botão de Acesso ao Painel ADM */}
+                <button
+                  onClick={() => {
+                    onClose();
+                    if (onOpenAdmin) onOpenAdmin();
+                  }}
+                  className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg border text-left cursor-pointer transition-colors"
+                  style={{
+                    backgroundColor: isDark ? '#26292f' : '#f4f3ed',
+                    borderColor: isDark ? '#363942' : '#e4e4e7',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">⚙️</span>
+                    <span className="text-[11px] font-mono uppercase font-bold tracking-wider">
+                      Painel do Lojista (ADM)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-orange-500 font-bold">Acessar ↗</span>
+                </button>
+
+                <div className="flex items-center justify-between text-xs font-mono pt-1">
                   <a
                     href="https://instagram.com"
                     target="_blank"
