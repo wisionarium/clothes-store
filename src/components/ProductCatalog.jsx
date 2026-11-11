@@ -7,11 +7,26 @@ export function ProductCatalog({ products = CATALOG_PRODUCTS, onSelectProduct, s
   const isDark = theme === 'dark';
   const [favorites, setFavorites] = useState({});
 
+  const categoryLabelsMap = {
+    calcas: 'Calças & Jeans',
+    bermudas: 'Bermudas & Shorts',
+    casacos: 'Casacos & Jaquetas',
+    camisetas: 'Camisetas',
+    acessorios: 'Acessórios',
+    vestuario: 'Vestuário',
+  };
+
+  // Identifica categorias reais existentes no catálogo (Nuvemshop ou Padrão)
+  const availableCategories = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean))
+  );
+
   const filterTabs = [
     { id: 'todos', label: 'Todos os Itens' },
-    { id: 'calcas', label: 'Calças & Jeans' },
-    { id: 'bermudas', label: 'Bermudas' },
-    { id: 'casacos', label: 'Casacos & Blazers' },
+    ...availableCategories.map((cat) => ({
+      id: cat,
+      label: categoryLabelsMap[cat] || (products.find((p) => p.category === cat)?.categoryLabel || cat),
+    })),
   ];
 
   const filteredProducts = selectedCategory === 'todos'
@@ -109,10 +124,21 @@ export function ProductCatalog({ products = CATALOG_PRODUCTS, onSelectProduct, s
                   />
                 </button>
 
-                {/* Ilustração / Visual da Peça */}
-                <div className="w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                  <ProductPlaceholder type={product.imageType} theme={theme} />
-                </div>
+                {/* Ilustração / Visual da Peça (Foto Real da Nuvemshop ou Ilustração) */}
+                {product.image && typeof product.image === 'string' && product.image.startsWith('http') ? (
+                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover object-top rounded-lg transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                    <ProductPlaceholder type={product.imageType} theme={theme} />
+                  </div>
+                )}
 
                 {/* Tag sutil de 'Ver Detalhes' no Hover */}
                 <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -138,12 +164,19 @@ export function ProductCatalog({ products = CATALOG_PRODUCTS, onSelectProduct, s
                   {product.name}
                 </h3>
 
-                <span
-                  className="text-xs sm:text-sm font-mono font-bold tracking-tight mt-0.5 sm:mt-1"
-                  style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-                >
-                  R$ {product.price.toFixed(2).replace('.', ',')}
-                </span>
+                <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+                  <span
+                    className="text-xs sm:text-sm font-mono font-bold tracking-tight"
+                    style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+                  >
+                    R$ {product.price.toFixed(2).replace('.', ',')}
+                  </span>
+                  {product.originalPrice && product.originalPrice > product.price && (
+                    <span className="text-[10px] sm:text-xs font-mono line-through opacity-45">
+                      R$ {product.originalPrice.toFixed(2).replace('.', ',')}
+                    </span>
+                  )}
+                </div>
 
                 {/* Bolinhas de Cores Disponíveis */}
                 <div className="flex items-center gap-1 sm:gap-1.5 mt-1.5 sm:mt-2">

@@ -50,8 +50,19 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
   const handleRedirectNuvemshop = () => {
     const nuvemUrl = storeConfig?.nuvemshop?.storeUrl;
     if (nuvemUrl) {
-      const cleanUrl = nuvemUrl.startsWith('http') ? nuvemUrl : `https://${nuvemUrl}`;
-      window.open(cleanUrl, '_blank');
+      const cleanUrl = nuvemUrl.startsWith('http')
+        ? nuvemUrl.replace(/\/$/, '')
+        : `https://${nuvemUrl.replace(/\/$/, '')}`;
+
+      const cartItemsParam = items
+        .map((i) => {
+          const variantId = i.variants?.[0]?.id || i.nuvemshopId || i.id;
+          return `${variantId}:${i.quantity || 1}`;
+        })
+        .join(',');
+
+      const fullCartUrl = cartItemsParam ? `${cleanUrl}/cart/add/${cartItemsParam}` : cleanUrl;
+      window.open(fullCartUrl, '_blank');
     }
   };
 
@@ -368,6 +379,34 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
             {/* ETAPA 2: FORMAS DE PAGAMENTO */}
             {step === 'payment' && (
               <div className="space-y-5">
+                {/* Opção Nuvemshop Oficial quando configurada */}
+                {storeConfig?.nuvemshop?.storeUrl && (
+                  <div
+                    className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                    style={{
+                      backgroundColor: isDark ? '#161f30' : '#eff6ff',
+                      borderColor: '#3b82f6',
+                    }}
+                  >
+                    <div>
+                      <span className="text-xs font-bold font-sans flex items-center gap-1.5 text-blue-400">
+                        <ExternalLink className="w-3.5 h-3.5" /> Pagar via Nuvem Pago & Nuvem Envio
+                      </span>
+                      <span className="text-[11px] font-mono opacity-70 block mt-0.5">
+                        Finalize com cálculo automático de frete e emissão da etiqueta de envio.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRedirectNuvemshop}
+                      className="py-2 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shrink-0 cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>Abrir na Nuvemshop</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -589,3 +628,4 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
     </AnimatePresence>
   );
 }
+

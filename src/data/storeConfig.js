@@ -115,3 +115,4 @@ export function resetAllToDefaults() {
   localStorage.removeItem(STORAGE_KEYS.SHIRTS);
   localStorage.removeItem(STORAGE_KEYS.CATALOG);
 }
+

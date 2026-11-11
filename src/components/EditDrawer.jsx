@@ -56,6 +56,38 @@ export function EditDrawer({
     }
   };
 
+  // Processo de Checkout (Nuvemshop ou Nativo)
+  const handleProceedCheckout = () => {
+    const isNuvemRedirect =
+      storeConfig?.nuvemshop?.enabled &&
+      storeConfig?.nuvemshop?.checkoutMode === 'redirect_cart' &&
+      storeConfig?.nuvemshop?.storeUrl;
+
+    if (isNuvemRedirect) {
+      const cleanStoreUrl = storeConfig.nuvemshop.storeUrl.startsWith('http')
+        ? storeConfig.nuvemshop.storeUrl.replace(/\/$/, '')
+        : `https://${storeConfig.nuvemshop.storeUrl.replace(/\/$/, '')}`;
+
+      const cartItemsParam = items
+        .map((i) => {
+          const variantId = i.variants?.[0]?.id || i.nuvemshopId || i.id;
+          return `${variantId}:${i.quantity || 1}`;
+        })
+        .join(',');
+
+      const directCartUrl = cartItemsParam ? `${cleanStoreUrl}/cart/add/${cartItemsParam}` : cleanStoreUrl;
+      window.open(directCartUrl, '_blank');
+      return;
+    }
+
+    onClose();
+    onOpenCheckout({
+      subtotal,
+      shippingValue: currentShippingPrice,
+      shippingMethod: selectedShipping,
+    });
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -353,17 +385,14 @@ export function EditDrawer({
                 </div>
 
                 <button
-                  onClick={() => {
-                    onClose();
-                    onOpenCheckout({
-                      subtotal,
-                      shippingValue: currentShippingPrice,
-                      shippingMethod: selectedShipping,
-                    });
-                  }}
+                  onClick={handleProceedCheckout}
                   className="w-full py-3.5 text-xs font-mono font-bold tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md bg-orange-600 hover:bg-orange-500 text-white active:scale-95"
                 >
-                  <span>Finalizar Compra</span>
+                  <span>
+                    {storeConfig?.nuvemshop?.enabled && storeConfig?.nuvemshop?.checkoutMode === 'redirect_cart'
+                      ? 'Finalizar Compra na Nuvemshop'
+                      : 'Finalizar Compra'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 

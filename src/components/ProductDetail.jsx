@@ -17,10 +17,16 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
   }, [product]);
 
   const availableSizes = useMemo(() => {
+    if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+      return product.sizes;
+    }
+    if (product.category === 'acessorios') {
+      return ['ÚNICO'];
+    }
     return isPantsOrShorts
       ? ['38', '40', '42', '44', '46']
       : ['P', 'M', 'G', 'GG', 'XG'];
-  }, [isPantsOrShorts]);
+  }, [product, isPantsOrShorts]);
 
   const normalizedColors = useMemo(() => {
     if (!product.colors || product.colors.length === 0) {
@@ -37,18 +43,29 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
     });
   }, [product]);
 
-  const [selectedSize, setSelectedSize] = useState(isPantsOrShorts ? '40' : 'G');
+  // Identificação do tipo de imagem (Arara vs Nuvemshop vs Placeholder)
+  const isAraraShirt = !!product.imageSide || (typeof product.id === 'number' && product.id <= 6 && !product.image?.startsWith('http'));
+  const isRemoteImage = (typeof product.image === 'string' && product.image.startsWith('http')) || (Array.isArray(product.images) && product.images.length > 0);
+  const galleryImages = useMemo(() => {
+    if (Array.isArray(product.images) && product.images.length > 0) return product.images;
+    if (typeof product.image === 'string' && product.image.startsWith('http')) return [product.image];
+    return [];
+  }, [product]);
+
+  const [selectedSize, setSelectedSize] = useState(availableSizes[0] || 'G');
   const [selectedColor, setSelectedColor] = useState(normalizedColors[0]?.name || 'Padrão');
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [activeView, setActiveView] = useState('front'); // 'front' | 'side'
+  const [selectedImageIdx, setSelectedImageIdx] = useState(0);
 
   useEffect(() => {
-    setSelectedSize(isPantsOrShorts ? '40' : 'G');
+    setSelectedSize(availableSizes[0] || (isPantsOrShorts ? '40' : 'G'));
     setSelectedColor(normalizedColors[0]?.name || 'Padrão');
     setActiveView('front');
+    setSelectedImageIdx(0);
     setQuantity(1);
-  }, [product, isPantsOrShorts, normalizedColors]);
+  }, [product, availableSizes, isPantsOrShorts, normalizedColors]);
 
   const handleAdd = () => {
     onAddToEdit({
@@ -130,13 +147,22 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
             }}
           >
             <motion.div
-              key={hasShirtImages ? activeView : 'placeholder-view'}
+              key={isRemoteImage ? selectedImageIdx : (isAraraShirt ? activeView : 'placeholder-view')}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25 }}
               className="w-full h-full flex items-center justify-center"
             >
-              {hasShirtImages ? (
+              {isRemoteImage ? (
+                <div className="w-full h-full max-h-[460px] flex items-center justify-center overflow-hidden">
+                  <img
+                    src={galleryImages[selectedImageIdx] || product.image}
+                    alt={product.name}
+                    className="w-full h-full object-contain max-h-[460px] rounded-lg"
+                    loading="eager"
+                  />
+                </div>
+              ) : isAraraShirt ? (
                 <div className="w-full h-full max-h-[460px] flex items-center justify-center">
                   <GarmentGraphic product={product} isFront={activeView === 'front'} />
                 </div>
@@ -148,56 +174,69 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
             </motion.div>
           </div>
 
-          {/* Miniaturas de Frente e Perfil Lateral (ou Vistas da Peça) */}
-          <div className="flex gap-3 sm:gap-4 mt-3 sm:mt-5">
-            <button
-              onClick={() => setActiveView('front')}
-              className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-              style={{
-                backgroundColor: isDark ? '#27292e' : '#f2f1ec',
-                borderColor: activeView === 'front' ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
-                opacity: activeView === 'front' ? 1 : 0.65,
-              }}
-            >
-              <div className="w-full h-12 sm:h-16 pointer-events-none scale-75 origin-center flex items-center justify-center">
-                {hasShirtImages ? (
-                  <GarmentGraphic product={product} isFront={true} />
-                ) : (
-                  <ProductPlaceholder type={product.imageType} theme={theme} />
-                )}
-              </div>
-              <span
-                className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider mt-0.5 sm:mt-1 font-semibold"
-                style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-              >
-                Frente
-              </span>
-            </button>
-
-            {hasShirtImages ? (
-              <button
-                onClick={() => setActiveView('side')}
-                className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-                style={{
-                  backgroundColor: isDark ? '#27292e' : '#f2f1ec',
-                  borderColor: activeView === 'side' ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
-                  opacity: activeView === 'side' ? 1 : 0.65,
-                }}
-              >
-                <div className="w-full h-12 sm:h-16 pointer-events-none scale-75 origin-center flex items-center justify-center">
-                  <GarmentGraphic product={product} isFront={false} />
-                </div>
-                <span
-                  className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider mt-0.5 sm:mt-1 font-semibold"
-                  style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+          {/* Miniaturas de Frente e Perfil Lateral (ou Galeria de Fotos Nuvemshop) */}
+          <div className="flex gap-2.5 sm:gap-4 mt-3 sm:mt-5 overflow-x-auto max-w-full pb-1 scrollbar-none">
+            {isRemoteImage && galleryImages.length > 0 ? (
+              galleryImages.map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImageIdx(idx)}
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs shrink-0 overflow-hidden"
+                  style={{
+                    backgroundColor: isDark ? '#27292e' : '#f2f1ec',
+                    borderColor: selectedImageIdx === idx ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
+                    opacity: selectedImageIdx === idx ? 1 : 0.6,
+                  }}
                 >
-                  De Lado
-                </span>
-              </button>
+                  <img src={imgUrl} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover rounded" />
+                </button>
+              ))
+            ) : isAraraShirt ? (
+              <>
+                <button
+                  onClick={() => setActiveView('front')}
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs shrink-0"
+                  style={{
+                    backgroundColor: isDark ? '#27292e' : '#f2f1ec',
+                    borderColor: activeView === 'front' ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
+                    opacity: activeView === 'front' ? 1 : 0.65,
+                  }}
+                >
+                  <div className="w-full h-12 sm:h-16 pointer-events-none scale-75 origin-center flex items-center justify-center">
+                    <GarmentGraphic product={product} isFront={true} />
+                  </div>
+                  <span
+                    className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider mt-0.5 sm:mt-1 font-semibold"
+                    style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+                  >
+                    Frente
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveView('side')}
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs shrink-0"
+                  style={{
+                    backgroundColor: isDark ? '#27292e' : '#f2f1ec',
+                    borderColor: activeView === 'side' ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
+                    opacity: activeView === 'side' ? 1 : 0.65,
+                  }}
+                >
+                  <div className="w-full h-12 sm:h-16 pointer-events-none scale-75 origin-center flex items-center justify-center">
+                    <GarmentGraphic product={product} isFront={false} />
+                  </div>
+                  <span
+                    className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider mt-0.5 sm:mt-1 font-semibold"
+                    style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+                  >
+                    De Lado
+                  </span>
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => setActiveView('detail')}
-                className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
+                className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border-2 transition-all p-1 flex flex-col items-center justify-center cursor-pointer shadow-2xs shrink-0"
                 style={{
                   backgroundColor: isDark ? '#27292e' : '#f2f1ec',
                   borderColor: activeView === 'detail' ? (isDark ? '#f4f5f7' : '#18181b') : (isDark ? '#383b44' : '#e2dfd5'),
@@ -296,12 +335,12 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
                 Tamanho {selectedSize}
               </span>
             </div>
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {availableSizes.map((size) => (
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
-                  className="py-2 sm:py-2.5 text-xs font-mono uppercase tracking-widest transition-all rounded cursor-pointer border"
+                  className="py-2 sm:py-2.5 px-3.5 min-w-[44px] text-xs font-mono uppercase tracking-widest transition-all rounded cursor-pointer border text-center"
                   style={{
                     backgroundColor: selectedSize === size
                       ? (isDark ? '#f4f5f7' : '#18181b')

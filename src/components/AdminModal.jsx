@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink } from 'lucide-react';
+import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../data/storeConfig';
 
 export function AdminModal({
@@ -31,6 +31,12 @@ export function AdminModal({
   const [localCatalog, setLocalCatalog] = useState(catalog);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Estados de Conexão e Sincronização Nuvemshop
+  const [isTestingNuvem, setIsTestingNuvem] = useState(false);
+  const [testResult, setTestResult] = useState(null); // { success: boolean, message: string }
+  const [isSyncingNuvem, setIsSyncingNuvem] = useState(false);
+  const [syncResult, setSyncResult] = useState(null); // { success: boolean, message: string, count?: number }
+
   // Sincroniza estado quando modal abre
   React.useEffect(() => {
     if (isOpen) {
@@ -38,8 +44,118 @@ export function AdminModal({
       setLocalShirts(shirts);
       setLocalCatalog(catalog);
       setSavedSuccess(false);
+      setTestResult(null);
+      setSyncResult(null);
     }
   }, [isOpen, config, shirts, catalog]);
+
+  // Testar conexão oficial com Nuvemshop
+  const handleTestNuvemshop = async () => {
+    const storeId = localConfig.nuvemshop?.storeId?.trim();
+    const token = localConfig.nuvemshop?.accessToken?.trim();
+
+    if (!storeId || !token) {
+      setTestResult({
+        success: false,
+        message: 'Por favor, preencha o Store ID e o Access Token da Nuvemshop antes de testar.',
+      });
+      return;
+    }
+
+    setIsTestingNuvem(true);
+    setTestResult(null);
+
+    try {
+      const res = await fetch(`/api/nuvemshop?action=test_connection&storeId=${encodeURIComponent(storeId)}&token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setTestResult({
+          success: true,
+          message: 'Conexão estabelecida com sucesso! Loja Nuvemshop autenticada e pronta.',
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error || 'Credenciais inválidas. Verifique o Store ID e o Token da Nuvemshop.',
+        });
+      }
+    } catch {
+      setTestResult({
+        success: false,
+        message: 'Não foi possível contatar o serviço de conexão. Verifique sua conexão com a internet.',
+      });
+    } finally {
+      setIsTestingNuvem(false);
+    }
+  };
+
+  // Sincronizar todos os produtos da Nuvemshop para a vitrine
+  const handleSyncNuvemshop = async () => {
+    const storeId = localConfig.nuvemshop?.storeId?.trim();
+    const token = localConfig.nuvemshop?.accessToken?.trim();
+
+    if (!storeId || !token) {
+      setSyncResult({
+        success: false,
+        message: 'Preencha o Store ID e o Access Token para buscar os produtos da sua Nuvemshop.',
+      });
+      return;
+    }
+
+    setIsSyncingNuvem(true);
+    setSyncResult(null);
+
+    try {
+      const res = await fetch(`/api/nuvemshop?action=get_products&storeId=${encodeURIComponent(storeId)}&token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+
+      if (res.ok && data.success && Array.isArray(data.products)) {
+        if (data.products.length === 0) {
+          setSyncResult({
+            success: true,
+            message: 'Conexão realizada, mas nenhum produto foi encontrado na sua conta Nuvemshop. Cadastre peças lá para exibi-las aqui!',
+            count: 0,
+          });
+        } else {
+          // Atualiza o catálogo local com os produtos reais da Nuvemshop
+          setLocalCatalog(data.products);
+          
+          // Ativa a Nuvemshop nas configurações automaticamente
+          const updatedConfig = {
+            ...localConfig,
+            nuvemshop: {
+              ...localConfig.nuvemshop,
+              enabled: true,
+            },
+          };
+          setLocalConfig(updatedConfig);
+
+          // Salva imediatamente
+          onSaveCatalog(data.products);
+          onSaveConfig(updatedConfig);
+
+          setSyncResult({
+            success: true,
+            message: `${data.products.length} peças e acessórios importados com sucesso! Fotos, preços, tamanhos e tags foram atualizados na vitrine.`,
+            count: data.products.length,
+          });
+        }
+      } else {
+        setSyncResult({
+          success: false,
+          message: data.error || 'Erro ao importar produtos da Nuvemshop.',
+        });
+      }
+    } catch {
+      setSyncResult({
+        success: false,
+        message: 'Falha de comunicação com o servidor ao importar produtos.',
+      });
+    } finally {
+      setIsSyncingNuvem(false);
+    }
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -522,14 +638,14 @@ export function AdminModal({
 
                 {/* ABA 4: CONEXÃO NUVEMSHOP */}
                 {activeTab === 'nuvemshop' && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div className="border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
                       <div className="flex items-center gap-2">
                         <span className="text-xl">☁️</span>
-                        <h3 className="text-base font-bold uppercase font-sans">Conexão Nuvemshop</h3>
+                        <h3 className="text-base font-bold uppercase font-sans">Conexão Oficial Nuvemshop</h3>
                       </div>
                       <p className="text-xs font-mono opacity-70 mt-1">
-                        Configure a ponte para que o estoque, pagamentos e etiquetas de envio rodem direto na Nuvemshop do seu cliente.
+                        Ponte completa: estoque sincronizado, vitrine de roupas e acessórios, pagamentos no Nuvem Pago e etiquetas de frete geradas automaticamente.
                       </p>
                     </div>
 
@@ -537,17 +653,55 @@ export function AdminModal({
                     <div
                       className="p-4 rounded-xl border space-y-2"
                       style={{
-                        backgroundColor: isDark ? '#1e2430' : '#f0f5ff',
+                        backgroundColor: isDark ? '#1a2233' : '#eff6ff',
                         borderColor: '#3b82f6',
                       }}
                     >
-                      <span className="text-[10px] font-mono uppercase font-bold text-blue-500 block">
-                        Como funciona essa integração
-                      </span>
-                      <p className="text-xs font-sans leading-relaxed opacity-85">
-                        A Levant funciona como a vitrine exclusiva de alta performance. Ao colocar a URL da loja Nuvemshop aqui, o botão de checkout pode redirecionar automaticamente com o carrinho pré-montado na Nuvemshop, onde o frete com desconto e a etiqueta do <strong>Nuvem Envio / Melhor Envio</strong> já são emitidos instantaneamente!
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[11px] font-mono uppercase font-bold text-blue-500 block">
+                          Logística, Pagamentos & Etiquetas Integradas
+                        </span>
+                      </div>
+                      <p className="text-xs font-sans leading-relaxed opacity-90">
+                        Quando o cliente inserir o <strong>Store ID</strong> e o <strong>Access Token</strong>, clique em <strong>Sincronizar Produtos</strong> para puxar todas as peças e acessórios cadastrados na Nuvemshop para a vitrine. Ao finalizar a compra, o carrinho vai direto para a Nuvemshop do cliente, onde a etiqueta de envio do <strong>Nuvem Envio / Melhor Envio</strong> e os pagamentos via <strong>Nuvem Pago / Cartão</strong> já são emitidos nativamente!
                       </p>
                     </div>
+
+                    {/* Mensagem de Feedback de Teste ou Sincronização */}
+                    {testResult && (
+                      <div
+                        className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs font-mono ${
+                          testResult.success
+                            ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-400'
+                            : 'bg-red-950/30 border-red-500/50 text-red-400'
+                        }`}
+                      >
+                        {testResult.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                        )}
+                        <span>{testResult.message}</span>
+                      </div>
+                    )}
+
+                    {syncResult && (
+                      <div
+                        className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs font-mono ${
+                          syncResult.success
+                            ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-400'
+                            : 'bg-red-950/30 border-red-500/50 text-red-400'
+                        }`}
+                      >
+                        {syncResult.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                        )}
+                        <span>{syncResult.message}</span>
+                      </div>
+                    )}
 
                     <div className="space-y-4 text-xs font-sans">
                       <div>
@@ -570,16 +724,19 @@ export function AdminModal({
                             borderColor: isDark ? '#363942' : '#d4d4d8',
                           }}
                         />
+                        <span className="text-[10px] font-mono opacity-60 block mt-1">
+                          Usada para redirecionar o cliente para a tela de pagamento e emissão da etiqueta de envio.
+                        </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
-                            Store ID (Opcional - API)
+                            1. Store ID da Nuvemshop
                           </label>
                           <input
                             type="text"
-                            placeholder="ID da loja Nuvemshop"
+                            placeholder="ex: 1234567"
                             value={localConfig.nuvemshop?.storeId || ''}
                             onChange={(e) =>
                               setLocalConfig({
@@ -593,15 +750,18 @@ export function AdminModal({
                               borderColor: isDark ? '#363942' : '#d4d4d8',
                             }}
                           />
+                          <span className="text-[10px] font-mono opacity-60 block mt-1">
+                            Disponível na URL do painel administrativo da Nuvemshop.
+                          </span>
                         </div>
 
                         <div>
                           <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
-                            Access Token da API (Opcional)
+                            2. Access Token da API Nuvemshop
                           </label>
                           <input
                             type="password"
-                            placeholder="Token de autorização"
+                            placeholder="ex: 8a9f...3e1d"
                             value={localConfig.nuvemshop?.accessToken || ''}
                             onChange={(e) =>
                               setLocalConfig({
@@ -615,15 +775,46 @@ export function AdminModal({
                               borderColor: isDark ? '#363942' : '#d4d4d8',
                             }}
                           />
+                          <span className="text-[10px] font-mono opacity-60 block mt-1">
+                            Gerado no aplicativo de API ou integrações da Nuvemshop.
+                          </span>
                         </div>
                       </div>
 
-                      <div>
+                      {/* Botões de Ação Direta com a Nuvemshop */}
+                      <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                        <button
+                          type="button"
+                          onClick={handleTestNuvemshop}
+                          disabled={isTestingNuvem}
+                          className="flex-1 py-2.5 px-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border flex items-center justify-center gap-2 cursor-pointer transition-all hover:bg-zinc-800 disabled:opacity-50"
+                          style={{
+                            borderColor: isDark ? '#3b404d' : '#d4d4d8',
+                            backgroundColor: isDark ? '#23252a' : '#f4f4f5',
+                            color: isDark ? '#f4f5f7' : '#18181b',
+                          }}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                          <span>{isTestingNuvem ? 'Verificando...' : '1. Testar Conexão'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSyncNuvemshop}
+                          disabled={isSyncingNuvem}
+                          className="flex-1 py-2.5 px-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 active:scale-98"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isSyncingNuvem ? 'animate-spin' : ''}`} />
+                          <span>{isSyncingNuvem ? 'Importando Peças...' : '2. 🔄 Sincronizar Produtos'}</span>
+                        </button>
+                      </div>
+
+                      <div className="pt-2">
                         <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
                           Comportamento do Botão de Finalizar Compra
                         </label>
                         <select
-                          value={localConfig.nuvemshop?.checkoutMode || 'built_in'}
+                          value={localConfig.nuvemshop?.checkoutMode || 'redirect_cart'}
                           onChange={(e) =>
                             setLocalConfig({
                               ...localConfig,
@@ -636,9 +827,45 @@ export function AdminModal({
                             borderColor: isDark ? '#363942' : '#d4d4d8',
                           }}
                         >
-                          <option value="built_in">Checkout Próprio Levant (PIX instantâneo + WhatsApp)</option>
-                          <option value="redirect_cart">Redirecionar direto para o Checkout da Nuvemshop</option>
+                          <option value="redirect_cart">
+                            Checkout Direto Nuvemshop (Recomendado: Nuvem Pago + Emissão de Etiquetas de Frete)
+                          </option>
+                          <option value="built_in">
+                            Checkout Próprio Levant (PIX instantâneo na tela + Confirmação WhatsApp)
+                          </option>
                         </select>
+                      </div>
+
+                      {/* Status de Ativação Geral */}
+                      <div
+                        className="p-3.5 rounded-xl border flex items-center justify-between"
+                        style={{
+                          backgroundColor: isDark ? '#181a1f' : '#f9f9f7',
+                          borderColor: isDark ? '#33363e' : '#e4e4e7',
+                        }}
+                      >
+                        <div>
+                          <span className="font-bold text-xs block">Status da Integração Nuvemshop</span>
+                          <span className="text-[11px] font-mono opacity-60">
+                            {localConfig.nuvemshop?.enabled
+                              ? 'Ativa: Vitrine e checkout conectados à Nuvemshop'
+                              : 'Inativa: Utilizando catálogo padrão demonstrativo'}
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!localConfig.nuvemshop?.enabled}
+                            onChange={(e) =>
+                              setLocalConfig({
+                                ...localConfig,
+                                nuvemshop: { ...localConfig.nuvemshop, enabled: e.target.checked },
+                              })
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -714,3 +941,4 @@ export function AdminModal({
     </AnimatePresence>
   );
 }
+
