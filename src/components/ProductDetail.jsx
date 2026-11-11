@@ -43,14 +43,15 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
     });
   }, [product]);
 
-  // Identificação do tipo de imagem (Arara vs Nuvemshop vs Placeholder)
-  const isAraraShirt = !!product.imageSide || (typeof product.id === 'number' && product.id <= 6 && !product.image?.startsWith('http'));
-  const isRemoteImage = (typeof product.image === 'string' && product.image.startsWith('http')) || (Array.isArray(product.images) && product.images.length > 0);
+  // Identificação do tipo de imagem (Arara vs Nuvemshop/Upload vs Placeholder)
+  const hasCustomImage = typeof product.image === 'string' && product.image.trim().length > 0;
+  const isAraraShirt = !hasCustomImage && (!!product.imageSide || (typeof product.id === 'number' && product.id <= 7));
+  const isRemoteImage = hasCustomImage || (Array.isArray(product.images) && product.images.length > 0);
   const galleryImages = useMemo(() => {
     if (Array.isArray(product.images) && product.images.length > 0) return product.images;
-    if (typeof product.image === 'string' && product.image.startsWith('http')) return [product.image];
+    if (hasCustomImage) return [product.image];
     return [];
-  }, [product]);
+  }, [product, hasCustomImage]);
 
   const [selectedSize, setSelectedSize] = useState(availableSizes[0] || 'G');
   const [selectedColor, setSelectedColor] = useState(normalizedColors[0]?.name || 'Padrão');

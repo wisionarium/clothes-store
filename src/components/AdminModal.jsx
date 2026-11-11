@@ -225,55 +225,78 @@ export function AdminModal({
     });
   };
 
-  const handleCatalogFileUpload = (index, event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('A imagem é muito pesada (máximo 5MB). Escolha uma foto menor ou use um link de URL.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      handleCatalogChange(index, 'image', dataUrl);
-    };
-    reader.readAsDataURL(file);
+  // Compressor e otimizador de imagens para garantir carregamento ultrarrápido
+  const compressImage = (file, maxWidth = 1000, quality = 0.85) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          resolve(canvas.toDataURL(mimeType, quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleShirtFileUpload = (index, event) => {
+  const handleCatalogFileUpload = async (index, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('A imagem é muito pesada (máximo 5MB). Escolha uma foto menor ou use um link de URL.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A imagem é muito pesada (máximo 10MB). Escolha uma foto menor ou use um link de URL.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      handleShirtChange(index, 'image', dataUrl);
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImage(file, 1000, 0.85);
+    if (compressed) {
+      handleCatalogChange(index, 'image', compressed);
+    }
   };
 
-  const handleLogoFileUpload = (event) => {
+  const handleShirtFileUpload = async (index, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('A logo é muito pesada (máximo 5MB). Escolha uma imagem menor.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A imagem é muito pesada (máximo 10MB). Escolha uma foto menor ou use um link de URL.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      setLocalConfig((prev) => ({ ...prev, logoUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImage(file, 1000, 0.85);
+    if (compressed) {
+      handleShirtChange(index, 'image', compressed);
+    }
+  };
+
+  const handleLogoFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A logo é muito pesada (máximo 10MB). Escolha uma imagem menor.');
+      return;
+    }
+
+    const compressed = await compressImage(file, 800, 0.9);
+    if (compressed) {
+      setLocalConfig((prev) => ({ ...prev, logoUrl: compressed }));
+    }
   };
 
   const handleExportBackup = () => {

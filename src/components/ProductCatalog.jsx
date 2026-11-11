@@ -124,8 +124,8 @@ export function ProductCatalog({ products = CATALOG_PRODUCTS, onSelectProduct, s
                   />
                 </button>
 
-                {/* Ilustração / Visual da Peça (Foto Real da Nuvemshop ou Ilustração) */}
-                {product.image && typeof product.image === 'string' && product.image.startsWith('http') ? (
+                {/* Ilustração / Visual da Peça (Foto Real Upload/Nuvemshop ou Ilustração) */}
+                {product.image && typeof product.image === 'string' && product.image.trim().length > 0 ? (
                   <div className="w-full h-full flex items-center justify-center overflow-hidden">
                     <img
                       src={product.image}
