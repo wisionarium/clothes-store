@@ -83,9 +83,9 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
     ? product.price.toFixed(2).replace('.', ',')
     : product.price;
 
-  const productDescription = product.description || product.desc || 'Peça autêntica Levant com caimento estruturado, costuras reforçadas e acabamento premium para máximo conforto e durabilidade.';
+  const productDescription = product.description || product.desc || 'Peça autêntica desenvolvida com caimento estruturado, costuras reforçadas e acabamento premium para máximo conforto e durabilidade.';
   const productMaterial = product.material || (isPantsOrShorts ? 'Denim & Sarja 100% Algodão Puro 13oz' : 'Algodão Penteado de Alta Densidade 380 GSM');
-  const productFit = product.fit || 'Modelagem Ampla & Estruturada Levant';
+  const productFit = product.fit || 'Modelagem Ampla & Estruturada';
   const productSignature = product.signature || 'Aviamentos Metálicos Foscos + Pesponto Duplo';
 
   const features = product.features || (isPantsOrShorts ? [
@@ -261,7 +261,7 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
         <div className="w-full md:w-1/2 flex flex-col pt-1">
           <span className="text-[10px] sm:text-xs font-mono font-bold tracking-widest text-orange-500 uppercase mb-1 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
-            Levant Streetwear · Peça N° {productNum}
+            Streetwear & Essentials · Peça N° {productNum}
           </span>
 
           <div
@@ -483,7 +483,7 @@ export function ProductDetail({ product, onBack, onAddToEdit, onSelectProduct, t
                 className="w-full h-auto object-contain"
               />
               <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-mono uppercase tracking-widest gap-1.5 pointer-events-none">
-                <Maximize2 className="w-4 h-4" /> Especificações Levant
+                <Maximize2 className="w-4 h-4" /> Especificações Técnicas
               </div>
             </div>
             <span

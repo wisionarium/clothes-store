@@ -15,7 +15,7 @@ export const PRODUCTS = [
     fit: "Oversized Streetwear (ombros caídos)",
     signature: "Costura dupla ombro a ombro e reforço de gola",
     backDetail: "Costas limpas com etiqueta interna termocolante antifricção",
-    printText: "LEVANT ESSENTIALS",
+    printText: "ESSENTIALS TEE",
     colors: [
       { name: "Branco Puro", hex: "#e8e8ea" },
       { name: "Preto Ônix", hex: "#171717" },

@@ -29,7 +29,7 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
   const finalTotal = total + (shippingValue || 0);
 
   // Simulação de chave PIX Copia e Cola
-  const fakePixCode = `00020126580014br.gov.bcb.pix0136${storeConfig?.pixKey || 'pix@levant.com.br'}520400005303986540${finalTotal.toFixed(2)}5802BR5920${storeConfig?.pixBeneficiary || 'LEVANT STORE'}6009SAO PAULO62070503***6304`;
+  const fakePixCode = `00020126580014br.gov.bcb.pix0136${storeConfig?.pixKey || 'pix@clotheson.com.br'}520400005303986540${finalTotal.toFixed(2)}5802BR5920${storeConfig?.pixBeneficiary || (storeConfig?.storeName ? storeConfig.storeName.toUpperCase() : 'CLOTHES.ON STORE')}6009SAO PAULO62070503***6304`;
 
   const handleCopyPix = () => {
     navigator.clipboard.writeText(fakePixCode);
@@ -38,7 +38,7 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
   };
 
   const handleFinishOrder = () => {
-    const randomOrderNum = `LVNT-${Math.floor(100000 + Math.random() * 900000)}`;
+    const randomOrderNum = `ON-${Math.floor(100000 + Math.random() * 900000)}`;
     setOrderNumber(randomOrderNum);
     setStep('success');
     if (onOrderCompleted) {
@@ -73,7 +73,8 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
       .map((i) => `• ${i.name} (Tam: ${i.selectedSize}, Cor: ${i.selectedColor}) - Qtd: ${i.quantity || 1}`)
       .join('\n');
 
-    const msg = `Olá Levant! Acabei de fazer o pedido *${orderNumber}* no site.\n\n*Cliente:* ${formData.name}\n*Endereço:* ${formData.street}, ${formData.number} - ${formData.city}/${formData.state}\n\n*Peças:*\n${itemsSummary}\n\n*Total com Frete:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\nGostaria de confirmar o envio!`;
+    const storeTitle = storeConfig?.storeName || 'Clothes.on';
+    const msg = `Olá ${storeTitle}! Acabei de fazer o pedido *${orderNumber}* no site.\n\n*Cliente:* ${formData.name}\n*Endereço:* ${formData.street}, ${formData.number} - ${formData.city}/${formData.state}\n\n*Peças:*\n${itemsSummary}\n\n*Total com Frete:* R$ ${finalTotal.toFixed(2).replace('.', ',')}\n\nGostaria de confirmar o envio!`;
     const encoded = encodeURIComponent(msg);
     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
   };
@@ -111,7 +112,7 @@ export function CheckoutModal({ isOpen, onClose, items, total, shippingValue, sh
           >
             <div>
               <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-orange-500 block mb-0.5">
-                Checkout Seguro · Levant
+                Checkout Seguro · {storeConfig?.storeName || 'Clothes.on'}
               </span>
               <h2 className="text-xl font-bold tracking-tight font-sans uppercase">
                 {step === 'shipping' && '1. Endereço & Identificação'}

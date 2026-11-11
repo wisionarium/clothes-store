@@ -17,7 +17,7 @@ export function EditorialBanner({ theme = 'light' }) {
         <div className="w-full aspect-16/9 sm:aspect-21/9 md:aspect-24/9 max-h-[380px] overflow-hidden flex items-center justify-center bg-black/5">
           <img
             src="/images/banner/editorial_banner.png"
-            alt="Levant Concrete Season Editorial Campaign"
+            alt="Clothes.on Concrete Season Editorial Campaign"
             className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
           />
         </div>

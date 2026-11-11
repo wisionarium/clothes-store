@@ -79,11 +79,12 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
         {/* Bloco 1: Marca & Newsletter */}
         <div className="md:col-span-5 flex flex-col justify-between">
           <div>
-            <img
-              src={isDark ? '/images/logo/logo_white.png' : '/images/logo/logo_black.png'}
-              alt="Levant"
-              className="h-7 w-auto object-contain mb-4"
-            />
+            <span
+              className="text-xl font-mono font-black tracking-tight uppercase block mb-3"
+              style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+            >
+              clothes<span className="text-orange-500">.on</span>
+            </span>
             <p className="text-xs leading-relaxed max-w-sm font-sans mb-6 opacity-85">
               Marca autoral brasileira focada em silhuetas estruturadas, tecidos densos e estética minimalista contemporânea.
             </p>
@@ -152,7 +153,7 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
           <p className="cursor-pointer hover:text-orange-500 transition-colors">Política de Trocas e Devoluções</p>
           <p className="cursor-pointer hover:text-orange-500 transition-colors">Termos de Uso e Privacidade</p>
           <p className="cursor-pointer hover:text-orange-500 transition-colors">WhatsApp: (11) 99999-0000</p>
-          <p className="cursor-pointer hover:text-orange-500 transition-colors">E-mail: contato@levant.com.br</p>
+          <p className="cursor-pointer hover:text-orange-500 transition-colors">E-mail: contato@clotheson.com.br</p>
         </div>
       </div>
 

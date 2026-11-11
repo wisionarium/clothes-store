@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       const checkRes = await fetch(`https://api.tiendanube.com/v1/${cleanStoreId}/products?per_page=1`, {
         headers: {
           'Authentication': `bearer ${cleanToken}`,
-          'User-Agent': 'Levant Store Engine (contato@levant.com.br)',
+          'User-Agent': 'Clothes.on Store Engine (contato@clotheson.com.br)',
           'Content-Type': 'application/json',
         },
       });
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       const nuvemRes = await fetch(`https://api.tiendanube.com/v1/${cleanStoreId}/products?per_page=50`, {
         headers: {
           'Authentication': `bearer ${cleanToken}`,
-          'User-Agent': 'Levant Store Engine (contato@levant.com.br)',
+          'User-Agent': 'Clothes.on Store Engine (contato@clotheson.com.br)',
           'Content-Type': 'application/json',
         },
       });
@@ -73,9 +73,9 @@ export default async function handler(req, res) {
 
       const rawProducts = await nuvemRes.json();
 
-      // Mapeamento Inteligente para a Vitrine Levant
+      // Mapeamento Inteligente para a Vitrine de Roupas & Acessórios
       const mappedProducts = (Array.isArray(rawProducts) ? rawProducts : []).map((item) => {
-        const name = item.name?.pt || item.name?.es || (typeof item.name === 'string' ? item.name : 'Peça Levant');
+        const name = item.name?.pt || item.name?.es || (typeof item.name === 'string' ? item.name : 'Peça de Vestuário');
         const rawPrice = parseFloat(item.variants?.[0]?.price || item.price || 0);
         const promotionalPrice = parseFloat(item.variants?.[0]?.promotional_price || item.promotional_price || 0);
         const finalPrice = promotionalPrice > 0 && promotionalPrice < rawPrice ? promotionalPrice : rawPrice;
@@ -148,7 +148,7 @@ export default async function handler(req, res) {
           images: images.length > 0 ? images : [mainImage],
           colors: colors.length > 0 ? colors : ['Padrão'],
           sizes: sizes.length > 0 ? sizes : (category === 'calcas' || category === 'bermudas' ? ['38', '40', '42', '44'] : ['P', 'M', 'G', 'GG']),
-          description: cleanDesc || 'Peça autêntica desenvolvida com tecidos selecionados e acabamento de alto padrão Levant.',
+          description: cleanDesc || 'Peça autêntica desenvolvida com tecidos selecionados e acabamento de alto padrão.',
           handle: item.handle?.pt || item.handle || '',
           nuvemshopUrl: item.canonical_url || '',
           stock: item.variants?.[0]?.stock ?? 10,

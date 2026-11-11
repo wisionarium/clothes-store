@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../data/storeConfig';
 
 export function AdminModal({
@@ -193,6 +193,40 @@ export function AdminModal({
     });
   };
 
+  const handleCatalogFileUpload = (index, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem é muito pesada (máximo 5MB). Escolha uma foto menor ou use um link de URL.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      handleCatalogChange(index, 'image', dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleShirtFileUpload = (index, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem é muito pesada (máximo 5MB). Escolha uma foto menor ou use um link de URL.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      handleShirtChange(index, 'image', dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleExportBackup = () => {
     const backupData = {
       config: localConfig,
@@ -204,7 +238,8 @@ export function AdminModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `levant_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    const cleanBrand = (localConfig.storeName || 'clothes_on').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    a.download = `${cleanBrand}_backup_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -249,7 +284,7 @@ export function AdminModal({
                   Painel de Controle
                 </span>
                 <h2 className="text-lg sm:text-xl font-bold tracking-tight font-sans uppercase">
-                  Administração Levant
+                  Administração {localConfig.storeName || 'Clothes.on'}
                 </h2>
               </div>
             </div>
@@ -476,59 +511,132 @@ export function AdminModal({
                       <div>
                         <h3 className="text-base font-bold uppercase font-sans">Catálogo de Produtos (2x2)</h3>
                         <p className="text-xs font-mono opacity-70">
-                          Calças, bermudas e casacos exibidos na vitrine abaixo da arara.
+                          Calças, bermudas, casacos e acessórios. Altere fotos, nomes, preços ou faça upload do seu computador/celular.
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {localCatalog.map((prod, idx) => (
                         <div
                           key={prod.id}
-                          className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                          className="p-3.5 rounded-xl border flex flex-col gap-3 transition-colors"
                           style={{
                             backgroundColor: isDark ? '#27292f' : '#f9f8f4',
                             borderColor: isDark ? '#363942' : '#e5e7eb',
                           }}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
+                          {/* Linha 1: Foto Miniatura + Nome + Tag + Preço */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {/* Miniatura da Foto do Produto */}
+                              <div
+                                className="w-12 h-14 rounded-lg overflow-hidden border shrink-0 flex items-center justify-center relative bg-black/10"
+                                style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
+                              >
+                                {prod.image && typeof prod.image === 'string' ? (
+                                  <img
+                                    src={prod.image}
+                                    alt={prod.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-5 h-5 opacity-40" />
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <input
+                                    type="text"
+                                    value={prod.name}
+                                    onChange={(e) => handleCatalogChange(idx, 'name', e.target.value)}
+                                    className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[260px]"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Tag (ex: Novo)"
+                                    value={prod.tag || ''}
+                                    onChange={(e) => handleCatalogChange(idx, 'tag', e.target.value)}
+                                    className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border outline-none w-24"
+                                    style={{
+                                      backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                      borderColor: isDark ? '#363942' : '#d4d4d8',
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-mono opacity-60 block mt-0.5">
+                                  {prod.categoryLabel || prod.category}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                              <span className="text-xs font-mono opacity-70">R$</span>
                               <input
-                                type="text"
-                                value={prod.name}
-                                onChange={(e) => handleCatalogChange(idx, 'name', e.target.value)}
-                                className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[260px]"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Tag (ex: Novo)"
-                                value={prod.tag || ''}
-                                onChange={(e) => handleCatalogChange(idx, 'tag', e.target.value)}
-                                className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border outline-none w-24"
+                                type="number"
+                                step="0.01"
+                                value={prod.price}
+                                onChange={(e) => handleCatalogChange(idx, 'price', parseFloat(e.target.value) || 0)}
+                                className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
                                 style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  backgroundColor: isDark ? '#18191d' : '#ffffff',
                                   borderColor: isDark ? '#363942' : '#d4d4d8',
                                 }}
                               />
                             </div>
-                            <span className="text-[10px] font-mono opacity-60 block mt-0.5">
-                              {prod.categoryLabel}
-                            </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                            <span className="text-xs font-mono opacity-70">R$</span>
+                          {/* Linha 2: Controle de Foto (URL ou Upload direto) */}
+                          <div
+                            className="pt-2 border-t flex flex-col sm:flex-row items-center gap-2"
+                            style={{ borderColor: isDark ? '#343842' : '#e5e7eb' }}
+                          >
+                            <span className="text-[10px] font-mono uppercase opacity-60 shrink-0">
+                              Foto da Peça:
+                            </span>
+
                             <input
-                              type="number"
-                              step="0.01"
-                              value={prod.price}
-                              onChange={(e) => handleCatalogChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
+                              type="text"
+                              placeholder="Cole o link da foto (URL / Cloudflare R2 / Nuvemshop) ou faça upload ao lado ➔"
+                              value={prod.image || ''}
+                              onChange={(e) => handleCatalogChange(idx, 'image', e.target.value)}
+                              className="flex-1 px-2.5 py-1 rounded text-[11px] font-mono border outline-none w-full"
                               style={{
                                 backgroundColor: isDark ? '#18191d' : '#ffffff',
                                 borderColor: isDark ? '#363942' : '#d4d4d8',
                               }}
                             />
+
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                              <label
+                                className="py-1 px-2.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all border shadow-xs hover:bg-zinc-700 active:scale-95"
+                                style={{
+                                  backgroundColor: isDark ? '#2f333c' : '#f0f0ed',
+                                  borderColor: isDark ? '#474c57' : '#d4d4d8',
+                                }}
+                              >
+                                <Upload className="w-3 h-3 text-orange-500" />
+                                <span>Upload Foto</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleCatalogFileUpload(idx, e)}
+                                />
+                              </label>
+
+                              {prod.image && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCatalogChange(idx, 'image', '')}
+                                  title="Remover foto desta peça"
+                                  className="p-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -540,13 +648,33 @@ export function AdminModal({
                 {activeTab === 'settings' && (
                   <div className="space-y-4">
                     <div className="border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
-                      <h3 className="text-base font-bold uppercase font-sans">Configurações Gerais</h3>
+                      <h3 className="text-base font-bold uppercase font-sans">Configurações Gerais da Loja</h3>
                       <p className="text-xs font-mono opacity-70">
-                        Ajuste textos dinâmicos, WhatsApp, PIX e valor de frete grátis.
+                        Ajuste o nome da marca do cliente, textos dinâmicos, WhatsApp, PIX e frete grátis.
                       </p>
                     </div>
 
                     <div className="space-y-4 text-xs font-sans">
+                      <div>
+                        <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
+                          Nome da Loja / Marca do Cliente (White-Label)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ex: Clothes.on ou Nome da Sua Marca"
+                          value={localConfig.storeName || ''}
+                          onChange={(e) => setLocalConfig({ ...localConfig, storeName: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
+                          style={{
+                            backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
+                            borderColor: isDark ? '#363942' : '#d4d4d8',
+                          }}
+                        />
+                        <span className="text-[10px] font-mono opacity-60 block mt-1">
+                          Este nome substitui a marca em todo o site: topo, rodapé, sacola e mensagens do WhatsApp.
+                        </span>
+                      </div>
+
                       <div>
                         <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
                           Texto da Faixa Laranja Animada (Marquee da Arara)
@@ -605,7 +733,7 @@ export function AdminModal({
                           </label>
                           <input
                             type="text"
-                            placeholder="pix@levant.com.br"
+                            placeholder="pix@clotheson.com.br"
                             value={localConfig.pixKey || ''}
                             onChange={(e) => setLocalConfig({ ...localConfig, pixKey: e.target.value })}
                             className="w-full px-3 py-2 rounded-xl text-xs font-mono border outline-none"
@@ -831,7 +959,7 @@ export function AdminModal({
                             Checkout Direto Nuvemshop (Recomendado: Nuvem Pago + Emissão de Etiquetas de Frete)
                           </option>
                           <option value="built_in">
-                            Checkout Próprio Levant (PIX instantâneo na tela + Confirmação WhatsApp)
+                            Checkout Próprio da Loja (PIX instantâneo na tela + Confirmação WhatsApp)
                           </option>
                         </select>
                       </div>

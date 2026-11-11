@@ -60,11 +60,12 @@ export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin,
               style={{ borderColor: isDark ? '#363942' : '#e4e4e7' }}
             >
               <div className="flex items-center gap-3">
-                <img
-                  src={isDark ? '/images/logo/logo_white.png' : '/images/logo/logo_black.png'}
-                  alt="Levant"
-                  className="h-6 w-auto object-contain"
-                />
+                <span
+                  className="text-lg font-mono font-black tracking-tight uppercase"
+                  style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+                >
+                  clothes<span className="text-orange-500">.on</span>
+                </span>
               </div>
 
               <button
@@ -130,12 +131,12 @@ export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin,
                     className="text-[11px] font-mono tracking-widest uppercase font-bold block mb-2"
                     style={{ color: isDark ? '#808794' : '#a1a1aa' }}
                   >
-                    Universo Levant
+                    Universo da Marca
                   </span>
 
                   <button
                     onClick={() => {
-                      alert('Manifesto Levant: Minimalismo industrial, tecidos nobres com suedine pesado e modelagens modernas que duram uma vida inteira.');
+                      alert('Manifesto de Qualidade: Minimalismo industrial, tecidos nobres com suedine pesado e modelagens modernas que duram uma vida inteira.');
                       onClose();
                     }}
                     className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider cursor-pointer hover:opacity-100 transition-opacity"
@@ -194,7 +195,7 @@ export function NavigationMenu({ isOpen, onClose, onSelectCategory, onOpenAdmin,
                     style={{ color: isDark ? '#b5bac3' : '#52525b' }}
                   >
                     <InstagramIcon className="w-4 h-4" />
-                    <span>@levant.studio</span>
+                    <span>@clothes.on</span>
                   </a>
 
                   <a

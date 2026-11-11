@@ -27,7 +27,7 @@ export function Recommendations({ onSelectProduct, theme = 'light' }) {
           className="text-[10px] sm:text-xs font-mono uppercase tracking-wider mt-1 opacity-70"
           style={{ color: isDark ? '#9da3af' : '#71717a' }}
         >
-          Sugestões de combinação para compor o look completo Levant
+          Sugestões de combinação para compor o look completo
         </p>
       </div>
 

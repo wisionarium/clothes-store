@@ -220,7 +220,7 @@ export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, m
       {/* Subtítulo superior */}
       <div className="text-center mb-3 sm:mb-6 px-3">
         <span className="text-[10px] sm:text-[11px] font-mono tracking-[0.2em] sm:tracking-[0.25em] text-zinc-400 uppercase font-medium">
-          ON THE RAIL &nbsp;|&nbsp; LEVANT / CONCRETE SEASON
+          ON THE RAIL &nbsp;|&nbsp; ESSENTIALS APPAREL COLLECTION
         </span>
       </div>
 
@@ -361,7 +361,7 @@ export function ClothesRail({ products, currentIndex, onSelectIndex, onUnfold, m
               key={key}
               className="text-[10px] sm:text-xs font-black tracking-widest text-zinc-950 uppercase font-mono px-4 select-none"
             >
-              {marqueeText || 'LEVANT · CONCRETE SEASON N° 01  +  ON LOOKS, BE HYPER  +  TAKE IT TO 100% WASH SAND  +  FAULT HEAVY  +  ROBUST FIT  +  NO LOGOS, NO NOISE  +  MADE TO BE WORN HARD  +  BUILT HEAVY  + '}
+              {marqueeText || 'CLOTHES.ON · HEAVY STREETWEAR & ESSENTIALS + 100% WASH COTTON + HEAVY ROBUST FIT + BUILT TO BE WORN HARD + '}
             </span>
           ))}
         </div>

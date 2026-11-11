@@ -2,10 +2,10 @@ import { PRODUCTS } from './products';
 import { CATALOG_PRODUCTS } from './catalog';
 
 const STORAGE_KEYS = {
-  CONFIG: 'levant_store_config',
-  SHIRTS: 'levant_store_shirts',
-  CATALOG: 'levant_store_catalog',
-  CART: 'levant_store_cart',
+  CONFIG: 'clotheson_store_config',
+  SHIRTS: 'clotheson_store_shirts',
+  CATALOG: 'clotheson_store_catalog',
+  CART: 'clotheson_store_cart',
 };
 
 export const DEFAULT_CONFIG = {
@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG = {
 // Carrega configurações da loja
 export function getStoredConfig() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CONFIG);
+    const raw = localStorage.getItem(STORAGE_KEYS.CONFIG) || localStorage.getItem('levant_store_config');
     if (!raw) return DEFAULT_CONFIG;
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch {
@@ -53,7 +53,7 @@ export function saveStoredConfig(config) {
 // Carrega produtos da arara (camisas)
 export function getStoredShirts() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SHIRTS);
+    const raw = localStorage.getItem(STORAGE_KEYS.SHIRTS) || localStorage.getItem('levant_store_shirts');
     if (!raw) return PRODUCTS;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : PRODUCTS;
@@ -73,7 +73,7 @@ export function saveStoredShirts(shirts) {
 // Carrega catálogo (calças, bermudas, casacos)
 export function getStoredCatalog() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CATALOG);
+    const raw = localStorage.getItem(STORAGE_KEYS.CATALOG) || localStorage.getItem('levant_store_catalog');
     if (!raw) return CATALOG_PRODUCTS;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : CATALOG_PRODUCTS;
@@ -93,7 +93,7 @@ export function saveStoredCatalog(catalog) {
 // Carrinho persistente
 export function getStoredCart() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CART);
+    const raw = localStorage.getItem(STORAGE_KEYS.CART) || localStorage.getItem('levant_store_cart');
     if (!raw) return [];
     return JSON.parse(raw) || [];
   } catch {
