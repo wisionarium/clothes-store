@@ -9,15 +9,15 @@ const STORAGE_KEYS = {
 };
 
 export const DEFAULT_CONFIG = {
-  storeName: 'Levant',
+  storeName: 'clothes.on',
   adminPin: '1234',
-  marqueeText: 'LEVANT · CONCRETE SEASON N° 01 + ON LOOKS, BE HYPER + TAKE IT TO 100% WASH SAND + FAULT HEAVY + ROBUST FIT + NO LOGOS, NO NOISE + MADE TO BE WORN HARD + BUILT HEAVY +',
+  marqueeText: 'CLOTHES.ON · HEAVY STREETWEAR & ESSENTIALS + 100% PREMIUM COTTON + HEAVY ROBUST FIT + NO NOISE, PURE FORM + BUILT TO BE WORN HARD +',
   freeShippingThreshold: 299,
   defaultPacPrice: 19.90,
   defaultSedexPrice: 32.90,
   whatsappNumber: '5511999999999',
-  instagramHandle: 'levant.studio',
-  contactEmail: 'contato@levant.com.br',
+  instagramHandle: 'clothes.on',
+  contactEmail: 'contato@clotheson.com.br',
   // Conexão Nuvemshop
   nuvemshop: {
     enabled: false,
@@ -25,10 +25,10 @@ export const DEFAULT_CONFIG = {
     storeId: '',
     accessToken: '',
     // 'redirect_cart' (abre carrinho na Nuvemshop) ou 'built_in' (checkout próprio)
-    checkoutMode: 'built_in',
+    checkoutMode: 'redirect_cart',
   },
-  pixKey: 'pix@levant.com.br',
-  pixBeneficiary: 'LEVANT CLOTHING CO',
+  pixKey: 'pix@clotheson.com.br',
+  pixBeneficiary: 'CLOTHES.ON STORE',
 };
 
 // Carrega configurações da loja
@@ -114,5 +114,47 @@ export function resetAllToDefaults() {
   localStorage.removeItem(STORAGE_KEYS.CONFIG);
   localStorage.removeItem(STORAGE_KEYS.SHIRTS);
   localStorage.removeItem(STORAGE_KEYS.CATALOG);
+}
+
+// ==========================================
+// INTEGRAÇÃO NUVEM COM CLOUDFLARE KV
+// ==========================================
+
+// Busca todos os dados da loja salvos no Cloudflare KV
+export async function fetchRemoteStoreData() {
+  try {
+    const res = await fetch('/api/kv?key=all');
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.success && json.data) {
+      const { config, shirts, catalog } = json.data;
+
+      // Sincroniza localmente para carregar instantaneamente nos próximos acessos
+      if (config) saveStoredConfig(config);
+      if (shirts && Array.isArray(shirts) && shirts.length > 0) saveStoredShirts(shirts);
+      if (catalog && Array.isArray(catalog) && catalog.length > 0) saveStoredCatalog(catalog);
+
+      return { config, shirts, catalog };
+    }
+    return null;
+  } catch (err) {
+    console.error('Falha ao sincronizar com Cloudflare KV:', err);
+    return null;
+  }
+}
+
+// Salva alterações no Cloudflare KV em segundo plano
+export async function saveRemoteStoreData(payload) {
+  try {
+    const res = await fetch('/api/kv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('Falha ao persistir no Cloudflare KV:', err);
+    return false;
+  }
 }
 

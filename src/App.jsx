@@ -19,6 +19,8 @@ import {
   getStoredCart,
   saveStoredCart,
   resetAllToDefaults,
+  fetchRemoteStoreData,
+  saveRemoteStoreData,
 } from './data/storeConfig';
 
 export default function App() {
@@ -47,6 +49,21 @@ export default function App() {
   useEffect(() => {
     saveStoredCart(editItems);
   }, [editItems]);
+
+  // Sincroniza dados com o Cloudflare KV na nuvem ao carregar a página
+  useEffect(() => {
+    fetchRemoteStoreData().then((remote) => {
+      if (remote) {
+        if (remote.config) setStoreConfig((prev) => ({ ...prev, ...remote.config }));
+        if (remote.shirts && Array.isArray(remote.shirts) && remote.shirts.length > 0) {
+          setShirts(remote.shirts);
+        }
+        if (remote.catalog && Array.isArray(remote.catalog) && remote.catalog.length > 0) {
+          setCatalog(remote.catalog);
+        }
+      }
+    });
+  }, []);
 
   // Listener para abrir admin via URL hash (#admin)
   useEffect(() => {
@@ -118,20 +135,23 @@ export default function App() {
     setEditItems([]);
   };
 
-  // Funções de Administração
+  // Funções de Administração sincronizadas com Cloudflare KV
   const handleSaveConfig = (newConfig) => {
     setStoreConfig(newConfig);
     saveStoredConfig(newConfig);
+    saveRemoteStoreData({ config: newConfig });
   };
 
   const handleSaveShirts = (newShirts) => {
     setShirts(newShirts);
     saveStoredShirts(newShirts);
+    saveRemoteStoreData({ shirts: newShirts });
   };
 
   const handleSaveCatalog = (newCatalog) => {
     setCatalog(newCatalog);
     saveStoredCatalog(newCatalog);
+    saveRemoteStoreData({ catalog: newCatalog });
   };
 
   const handleResetDefaults = () => {

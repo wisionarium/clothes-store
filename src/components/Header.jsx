@@ -22,17 +22,17 @@ export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpen
         </button>
       </div>
 
-      {/* Logo LEVANT Central com imagem dinâmica de acordo com o tema */}
+      {/* Logo CLOTHES.ON Central (White-label moderno) */}
       <div
         onClick={onGoHome}
         className="cursor-pointer flex items-center justify-center select-none group py-1"
-        title="Levant"
+        title="clothes.on"
       >
-        <img
-          src={isDark ? '/images/logo/logo_white.png' : '/images/logo/logo_black.png'}
-          alt="Levant"
-          className="h-6 sm:h-7 md:h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
-        />
+        <span className="text-lg sm:text-2xl font-mono font-black tracking-tight uppercase transition-colors"
+          style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+        >
+          clothes<span className="text-orange-500">.on</span>
+        </span>
       </div>
 
       {/* Canto Direito: Tema (Sol/Lua) + Carrinho de Compras + Ícone de Perfil */}

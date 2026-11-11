@@ -161,7 +161,7 @@ export function Footer({ onOpenAdmin, theme = 'light' }) {
         className="border-t py-6 px-4 flex flex-col sm:flex-row items-center justify-between text-xs font-mono transition-colors max-w-6xl mx-auto gap-2"
         style={{ borderColor: isDark ? '#2b2d35' : '#e5e3dc', color: isDark ? '#7a808c' : '#a1a1aa' }}
       >
-        <p>© 2026 LEVANT STUDIO LTDA · Todos os direitos reservados</p>
+        <p>© 2026 clothes.on · Todos os direitos reservados</p>
         <button
           onClick={onOpenAdmin}
           className="hover:text-orange-500 transition-colors cursor-pointer opacity-70 hover:opacity-100 flex items-center gap-1"
