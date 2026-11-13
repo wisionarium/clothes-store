@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, Sun, Moon, ShoppingBag, User } from 'lucide-react';
 
-export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpenAdmin, theme = 'light', onToggleTheme, storeName, logoUrl }) {
+export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpenAdmin, theme = 'light', onToggleTheme, storeName, logoUrl, showThemeToggle = true }) {
   const isDark = theme === 'dark';
 
   return (
@@ -50,19 +50,21 @@ export function Header({ editCount = 0, onOpenEdit, onGoHome, onOpenMenu, onOpen
 
       {/* Canto Direito: Tema (Sol/Lua) + Carrinho de Compras + Ícone de Perfil */}
       <div className="flex items-center gap-1 sm:gap-3">
-        {/* Botão de Alternar Tema (Apenas o símbolo do Sol ou Lua) */}
-        <button
-          onClick={onToggleTheme}
-          title={isDark ? "Alternar para tema Claro" : "Alternar para tema Cinza Escuro"}
-          className="p-1.5 sm:p-2 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer hover:opacity-80"
-          style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
-        >
-          {isDark ? (
-            <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-pulse stroke-[2]" />
-          ) : (
-            <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-700 stroke-[1.8]" />
-          )}
-        </button>
+        {/* Botão de Alternar Tema (Ocultável se modo fixo estiver ativo) */}
+        {showThemeToggle && (
+          <button
+            onClick={onToggleTheme}
+            title={isDark ? "Alternar para tema Claro" : "Alternar para tema Cinza Escuro"}
+            className="p-1.5 sm:p-2 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer hover:opacity-80"
+            style={{ color: isDark ? '#f4f5f7' : '#18181b' }}
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-pulse stroke-[2]" />
+            ) : (
+              <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-700 stroke-[1.8]" />
+            )}
+          </button>
+        )}
 
         {/* Ícone do Carrinho (ao lado do tema e à esquerda do perfil) */}
         <button

@@ -3,12 +3,14 @@ import { AnimatePresence } from 'framer-motion';
 import { Header } from './components/Header';
 import { NavigationMenu } from './components/NavigationMenu';
 import { ClothesRail } from './components/ClothesRail';
+import { RunwayLookbook } from './components/RunwayLookbook';
 import { ProductCatalog } from './components/ProductCatalog';
 import { ProductDetail } from './components/ProductDetail';
 import { EditDrawer } from './components/EditDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { AdminModal } from './components/AdminModal';
 import { Footer } from './components/Footer';
+import { applyThemeVariables } from './data/themePalettes';
 import {
   getStoredConfig,
   saveStoredConfig,
@@ -16,6 +18,8 @@ import {
   saveStoredShirts,
   getStoredCatalog,
   saveStoredCatalog,
+  getStoredLooks,
+  saveStoredLooks,
   getStoredCart,
   saveStoredCart,
   resetAllToDefaults,
@@ -32,6 +36,7 @@ export default function App() {
   const [storeConfig, setStoreConfig] = useState(getStoredConfig);
   const [shirts, setShirts] = useState(getStoredShirts);
   const [catalog, setCatalog] = useState(getStoredCatalog);
+  const [looks, setLooks] = useState(getStoredLooks);
 
   // Carrinho de Compras Persistente
   const [editItems, setEditItems] = useState(getStoredCart);
@@ -61,6 +66,9 @@ export default function App() {
         if (remote.catalog && Array.isArray(remote.catalog) && remote.catalog.length > 0) {
           setCatalog(remote.catalog);
         }
+        if (remote.looks && Array.isArray(remote.looks) && remote.looks.length > 0) {
+          setLooks(remote.looks);
+        }
       }
     });
   }, []);
@@ -79,6 +87,9 @@ export default function App() {
 
   // Inicializa o tema: usa preferência salva ou o padrão configurado no Admin
   const [theme, setTheme] = useState(() => {
+    if (storeConfig?.themeMode === 'single') {
+      return storeConfig?.defaultTheme || 'dark';
+    }
     const saved = localStorage.getItem('korvo-theme');
     if (saved) return saved;
     return storeConfig?.defaultTheme || 'dark';
@@ -86,10 +97,23 @@ export default function App() {
 
   // Atualiza o tema se o lojista alterar nas configurações do Admin
   useEffect(() => {
+    if (storeConfig?.themeMode === 'single') {
+      setTheme(storeConfig?.defaultTheme || 'dark');
+      return;
+    }
     if (storeConfig?.defaultTheme && !localStorage.getItem('korvo-theme-manual')) {
       setTheme(storeConfig.defaultTheme);
     }
-  }, [storeConfig?.defaultTheme]);
+  }, [storeConfig?.defaultTheme, storeConfig?.themeMode]);
+
+  // Aplica as variáveis CSS dinâmicas da paleta selecionada (Dark ou Light)
+  useEffect(() => {
+    const isDark = theme === 'dark';
+    const activePalette = isDark
+      ? (storeConfig?.darkPalette || 'onyx_industrial')
+      : (storeConfig?.lightPalette || 'raw_canvas');
+    applyThemeVariables(isDark, activePalette);
+  }, [theme, storeConfig?.darkPalette, storeConfig?.lightPalette]);
 
   // Atualiza a classe 'dark' no elemento raiz do documento
   useEffect(() => {
@@ -102,6 +126,7 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => {
+    if (storeConfig?.themeMode === 'single') return; // Bloqueia se estiver fixo
     localStorage.setItem('korvo-theme-manual', 'true');
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -162,11 +187,18 @@ export default function App() {
     saveRemoteStoreData({ catalog: newCatalog });
   };
 
+  const handleSaveLooks = (newLooks) => {
+    setLooks(newLooks);
+    saveStoredLooks(newLooks);
+    saveRemoteStoreData({ looks: newLooks });
+  };
+
   const handleResetDefaults = () => {
     resetAllToDefaults();
     setStoreConfig(getStoredConfig());
     setShirts(getStoredShirts());
     setCatalog(getStoredCatalog());
+    setLooks(getStoredLooks());
   };
 
   const handleCategorySelect = (category) => {
@@ -206,6 +238,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
         storeName={storeConfig.storeName}
         logoUrl={storeConfig.logoUrl}
+        showThemeToggle={storeConfig?.themeMode !== 'single'}
       />
 
       {/* Menu Lateral Deslizante da Esquerda */}
@@ -224,23 +257,38 @@ export default function App() {
         <AnimatePresence mode="wait">
           {viewMode === 'rail' ? (
             <div key="home-view" className="w-full flex flex-col items-center">
-              {/* Arara de Roupas Interativa com dados dinâmicos do Admin */}
-              <ClothesRail
-                products={shirts}
-                currentIndex={currentIndex}
-                onSelectIndex={(newIdx) => {
-                  setCurrentIndex(newIdx);
-                  setSelectedProduct(null);
-                }}
-                onUnfold={() => {
-                  setSelectedProduct(currentShirt);
-                  setViewMode('detail');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                marqueeText={storeConfig.marqueeText}
-                theme={theme}
-                storeName={storeConfig.storeName}
-              />
+              {/* HERO PRINCIPAL: Passarela 3D Giratória (Shop the Look) ou Arara Metálica 3D */}
+              {storeConfig?.heroType === 'runway' ? (
+                <RunwayLookbook
+                  looks={looks}
+                  allProducts={[...shirts, ...catalog]}
+                  storeName={storeConfig.storeName}
+                  theme={theme}
+                  onSelectProduct={(prod) => {
+                    setSelectedProduct(prod);
+                    setViewMode('detail');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onAddToCart={handleAddToEdit}
+                />
+              ) : (
+                <ClothesRail
+                  products={shirts}
+                  currentIndex={currentIndex}
+                  onSelectIndex={(newIdx) => {
+                    setCurrentIndex(newIdx);
+                    setSelectedProduct(null);
+                  }}
+                  onUnfold={() => {
+                    setSelectedProduct(currentShirt);
+                    setViewMode('detail');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  marqueeText={storeConfig.marqueeText}
+                  theme={theme}
+                  storeName={storeConfig.storeName}
+                />
+              )}
 
               {/* Catálogo Completo Logo Abaixo da Arara (Calças, Bermudas & Casacos) */}
               <ProductCatalog
@@ -333,6 +381,8 @@ export default function App() {
         onSaveShirts={handleSaveShirts}
         catalog={catalog}
         onSaveCatalog={handleSaveCatalog}
+        looks={looks}
+        onSaveLooks={handleSaveLooks}
         onResetDefaults={handleResetDefaults}
         theme={theme}
       />

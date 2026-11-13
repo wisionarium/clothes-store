@@ -1,17 +1,23 @@
 import { PRODUCTS } from './products';
 import { CATALOG_PRODUCTS } from './catalog';
+import { DEFAULT_LOOKS } from './lookbook';
 
 const STORAGE_KEYS = {
   CONFIG: 'clotheson_store_config',
   SHIRTS: 'clotheson_store_shirts',
   CATALOG: 'clotheson_store_catalog',
+  LOOKS: 'clotheson_store_looks',
   CART: 'clotheson_store_cart',
 };
 
 export const DEFAULT_CONFIG = {
   storeName: 'clothes.on',
   logoUrl: '', // URL ou imagem base64 da Logo do cliente
+  heroType: 'rail', // 'rail' (Arara 3D Cromada) | 'runway' (Passarela 3D Giratória / Shop the Look)
+  themeMode: 'dual', // 'dual' (Comutador Sol/Lua ativo no topo) | 'single' (Fixo único na loja)
   defaultTheme: 'dark', // 'dark' | 'light' - Tema inicial do site
+  darkPalette: 'onyx_industrial', // 'onyx_industrial' | 'midnight_minimal' | 'earth_noir' | 'concrete_monochrome'
+  lightPalette: 'raw_canvas', // 'raw_canvas' | 'pure_studio' | 'nordic_fog' | 'sand_warm'
   adminPin: '1234',
   marqueeText: 'CLOTHES.ON · HEAVY STREETWEAR & ESSENTIALS + 100% PREMIUM COTTON + HEAVY ROBUST FIT + NO NOISE, PURE FORM + BUILT TO BE WORN HARD +',
   freeShippingThreshold: 299,
@@ -106,6 +112,26 @@ export function saveStoredCatalog(catalog) {
   }
 }
 
+// Carrega os looks da passarela 3D
+export function getStoredLooks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.LOOKS);
+    if (!raw) return DEFAULT_LOOKS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_LOOKS;
+  } catch {
+    return DEFAULT_LOOKS;
+  }
+}
+
+export function saveStoredLooks(looks) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.LOOKS, JSON.stringify(looks));
+  } catch (e) {
+    console.error('Erro ao salvar looks:', e);
+  }
+}
+
 // Carrinho persistente
 export function getStoredCart() {
   try {
@@ -130,6 +156,7 @@ export function resetAllToDefaults() {
   localStorage.removeItem(STORAGE_KEYS.CONFIG);
   localStorage.removeItem(STORAGE_KEYS.SHIRTS);
   localStorage.removeItem(STORAGE_KEYS.CATALOG);
+  localStorage.removeItem(STORAGE_KEYS.LOOKS);
 }
 
 // ==========================================
@@ -143,7 +170,7 @@ export async function fetchRemoteStoreData() {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && json.data) {
-      const { config, shirts, catalog } = json.data;
+      const { config, shirts, catalog, looks } = json.data;
 
       // Sincroniza localmente para carregar instantaneamente nos próximos acessos
       if (config) {
@@ -154,8 +181,9 @@ export async function fetchRemoteStoreData() {
       }
       if (shirts && Array.isArray(shirts) && shirts.length > 0) saveStoredShirts(shirts);
       if (catalog && Array.isArray(catalog) && catalog.length > 0) saveStoredCatalog(catalog);
+      if (looks && Array.isArray(looks) && looks.length > 0) saveStoredLooks(looks);
 
-      return { config, shirts, catalog };
+      return { config, shirts, catalog, looks };
     }
     return null;
   } catch (err) {

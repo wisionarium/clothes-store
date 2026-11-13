@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
+import { X, Lock, Save, RotateCcw, Download, ShoppingBag, Sliders, Shield, Store, Check, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Trash2, Plus, Sparkles, Palette, Layers, Sun, Moon } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../data/storeConfig';
 import { CATALOG_PRODUCTS } from '../data/catalog';
+import { DARK_PALETTES, LIGHT_PALETTES } from '../data/themePalettes';
 
 export function AdminModal({
   isOpen,
@@ -13,6 +14,8 @@ export function AdminModal({
   onSaveShirts,
   catalog,
   onSaveCatalog,
+  looks = [],
+  onSaveLooks,
   onResetDefaults,
   theme = 'dark',
 }) {
@@ -23,13 +26,14 @@ export function AdminModal({
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
 
-  // Aba ativa: 'shirts' | 'catalog' | 'settings' | 'nuvemshop' | 'backup'
-  const [activeTab, setActiveTab] = useState('shirts');
+  // Aba ativa: 'shirts' | 'catalog' | 'looks' | 'settings' | 'nuvemshop' | 'backup'
+  const [activeTab, setActiveTab] = useState('settings');
 
   // Estado local para edição
   const [localConfig, setLocalConfig] = useState(config);
   const [localShirts, setLocalShirts] = useState(shirts);
   const [localCatalog, setLocalCatalog] = useState(catalog);
+  const [localLooks, setLocalLooks] = useState(looks);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Estados de Conexão e Sincronização Nuvemshop
@@ -44,11 +48,12 @@ export function AdminModal({
       setLocalConfig(config);
       setLocalShirts(shirts);
       setLocalCatalog(catalog);
+      setLocalLooks(looks);
       setSavedSuccess(false);
       setTestResult(null);
       setSyncResult(null);
     }
-  }, [isOpen, config, shirts, catalog]);
+  }, [isOpen, config, shirts, catalog, looks]);
 
   // Testar conexão oficial com Nuvemshop
   const handleTestNuvemshop = async () => {
@@ -205,8 +210,36 @@ export function AdminModal({
     onSaveConfig(localConfig);
     onSaveShirts(localShirts);
     onSaveCatalog(localCatalog);
+    if (onSaveLooks) onSaveLooks(localLooks);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
+  };
+
+  const handleLookChange = (index, field, value) => {
+    setLocalLooks((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleToggleProductInLook = (lookIndex, productId) => {
+    setLocalLooks((prev) => {
+      const copy = [...prev];
+      const currentIds = copy[lookIndex].productIds || [];
+      if (currentIds.includes(productId)) {
+        copy[lookIndex] = {
+          ...copy[lookIndex],
+          productIds: currentIds.filter((id) => id !== productId),
+        };
+      } else {
+        copy[lookIndex] = {
+          ...copy[lookIndex],
+          productIds: [...currentIds, productId],
+        };
+      }
+      return copy;
+    });
   };
 
   const handleShirtChange = (index, field, value) => {
@@ -296,6 +329,21 @@ export function AdminModal({
     const compressed = await compressImage(file, 800, 0.9);
     if (compressed) {
       setLocalConfig((prev) => ({ ...prev, logoUrl: compressed }));
+    }
+  };
+
+  const handleLookPhotoUpload = async (index, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A foto do modelo é muito pesada (máximo 10MB). Escolha uma foto menor.');
+      return;
+    }
+
+    const compressed = await compressImage(file, 1000, 0.88);
+    if (compressed) {
+      handleLookChange(index, 'modelImage', compressed);
     }
   };
 
@@ -474,6 +522,19 @@ export function AdminModal({
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('looks')}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  style={{
+                    backgroundColor: activeTab === 'looks' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
+                    color: activeTab === 'looks' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
+                    fontWeight: activeTab === 'looks' ? 'bold' : 'normal',
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  <span>Passarela 3D (Looks)</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab('settings')}
                   className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
@@ -482,8 +543,8 @@ export function AdminModal({
                     fontWeight: activeTab === 'settings' ? 'bold' : 'normal',
                   }}
                 >
-                  <Store className="w-4 h-4" />
-                  <span>Loja & Marquee</span>
+                  <Palette className="w-4 h-4 text-orange-500" />
+                  <span>Estilo, Hero & Cores</span>
                 </button>
 
                 <button
@@ -779,17 +840,473 @@ export function AdminModal({
                   </div>
                 )}
 
-                {/* ABA 3: CONFIGURAÇÕES DA LOJA */}
+                {/* ABA 3: PASSARELA 3D (LOOKS / TRY THE LOOK) */}
+                {activeTab === 'looks' && (
+                  <div className="space-y-5">
+                    <div className="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-orange-500" />
+                          <h3 className="text-base font-bold uppercase font-sans">Passarela 3D Giratória (Shop the Look)</h3>
+                        </div>
+                        <p className="text-xs font-mono opacity-70 mt-0.5">
+                          Configure os modelos, envie fotos de corpo inteiro e vincule as roupas que compõem cada look.
+                        </p>
+                      </div>
+
+                      {localConfig.heroType !== 'runway' && (
+                        <button
+                          type="button"
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'runway' })}
+                          className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-orange-600 hover:bg-orange-500 text-white cursor-pointer transition-transform active:scale-95 shrink-0 flex items-center gap-1.5 shadow-xs"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Ativar Passarela no Topo</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {localLooks.map((look, lIdx) => {
+                        const allAvailableProducts = [...localShirts, ...localCatalog];
+                        const linkedProds = allAvailableProducts.filter((p) =>
+                          (look.productIds || []).includes(p.id)
+                        );
+
+                        return (
+                          <div
+                            key={look.id || lIdx}
+                            className="p-4 rounded-2xl border space-y-4 transition-colors"
+                            style={{
+                              backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                              borderColor: isDark ? '#333742' : '#e5e7eb',
+                            }}
+                          >
+                            {/* Linha 1: Foto do Modelo + Informações do Look */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                              {/* Miniatura do Modelo */}
+                              <div
+                                className="w-16 h-22 sm:w-20 sm:h-26 rounded-xl border shrink-0 flex items-center justify-center overflow-hidden bg-black/10 relative"
+                                style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
+                              >
+                                {look.modelImage && typeof look.modelImage === 'string' && !look.modelImage.startsWith('/images/looks') ? (
+                                  <img
+                                    src={look.modelImage}
+                                    alt={look.name}
+                                    className="w-full h-full object-contain p-1"
+                                  />
+                                ) : (
+                                  <span className="text-[10px] font-mono font-bold opacity-40 uppercase text-center p-1">
+                                    Modelo 0{lIdx + 1}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Campos: Título, Categoria e Foto */}
+                              <div className="flex-1 w-full space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded bg-orange-600/20 text-orange-500 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                                    {look.number || `0${lIdx + 1}`}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={look.name || ''}
+                                    onChange={(e) => handleLookChange(lIdx, 'name', e.target.value)}
+                                    placeholder="Nome do Look (ex: The City Suit)"
+                                    className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-sm"
+                                  />
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={look.description || ''}
+                                  onChange={(e) => handleLookChange(lIdx, 'description', e.target.value)}
+                                  placeholder="Descrição editorial do look..."
+                                  className="w-full text-xs font-mono opacity-80 bg-transparent border-b border-zinc-600/30 outline-none"
+                                />
+
+                                {/* Upload / URL da Foto do Modelo */}
+                                <div className="flex items-center gap-2 pt-1">
+                                  <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-[11px] font-mono font-bold"
+                                    style={{
+                                      borderColor: isDark ? '#434752' : '#d4d4d8',
+                                      backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                    }}
+                                  >
+                                    <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                    <span>Upload Modelo</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleLookPhotoUpload(lIdx, e)}
+                                      className="hidden"
+                                    />
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    placeholder="ou link direto da foto do modelo (PNG/JPG)"
+                                    value={look.modelImage && !look.modelImage.startsWith('/images/looks') ? look.modelImage : ''}
+                                    onChange={(e) => handleLookChange(lIdx, 'modelImage', e.target.value)}
+                                    className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none text-[11px] font-mono"
+                                    style={{
+                                      backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                      borderColor: isDark ? '#363942' : '#d4d4d8',
+                                    }}
+                                  />
+
+                                  {look.modelImage && !look.modelImage.startsWith('/images/looks') && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleLookChange(lIdx, 'modelImage', '')}
+                                      title="Restaurar Modelo Padrão"
+                                      className="p-1.5 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Linha 2: Peças Vinculadas ao Look */}
+                            <div className="pt-2 border-t" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[11px] font-mono font-bold uppercase text-orange-500">
+                                  Roupas Vestidas Neste Look ({linkedProds.length} selecionadas):
+                                </span>
+                                <span className="text-[10px] font-mono opacity-60">
+                                  Clique para marcar ou desmarcar
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 rounded-xl border bg-black/5" style={{ borderColor: isDark ? '#363942' : '#e4e4e7' }}>
+                                {allAvailableProducts.map((prod) => {
+                                  const isSelected = (look.productIds || []).includes(prod.id);
+                                  return (
+                                    <button
+                                      key={prod.id}
+                                      type="button"
+                                      onClick={() => handleToggleProductInLook(lIdx, prod.id)}
+                                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-mono uppercase transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                        isSelected
+                                          ? 'bg-orange-600 text-white border-orange-500 font-bold shadow-xs'
+                                          : isDark
+                                          ? 'bg-zinc-800/80 text-zinc-300 border-zinc-700/60 hover:bg-zinc-700'
+                                          : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100'
+                                      }`}
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? '#ffffff' : '#f97316' }} />
+                                      <span className="truncate max-w-[140px]">{prod.name}</span>
+                                      <span className="opacity-80">R${prod.price?.toFixed(0)}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 4: CONFIGURAÇÕES DE ESTILO, HERO & TEMAS */}
                 {activeTab === 'settings' && (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
-                      <h3 className="text-base font-bold uppercase font-sans">Configurações Gerais da Loja</h3>
+                      <h3 className="text-base font-bold uppercase font-sans">Estilo Visual, Layout do Topo & Cores</h3>
                       <p className="text-xs font-mono opacity-70">
-                        Ajuste o nome da marca do cliente, textos dinâmicos, WhatsApp, PIX e frete grátis.
+                        Escolha o formato da seção Hero principal, defina o comportamento dos temas e selecione paletas de cores de alta curadoria.
                       </p>
                     </div>
 
-                    <div className="space-y-4 text-xs font-sans">
+                    {/* SELETOR VISUAL DO TIPO DE HERO (COM CARDS ILUSTRADOS) */}
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[11px] font-mono uppercase tracking-wider block font-bold text-orange-500">
+                          1. Formato da Seção Hero (Topo Principal da Loja)
+                        </span>
+                        <p className="text-[10px] font-mono opacity-60">
+                          Selecione como os produtos serão apresentados no primeiro impacto visual da vitrine.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Card 1: Arara Metálica 3D */}
+                        <div
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'rail' })}
+                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            (localConfig.heroType || 'rail') === 'rail'
+                              ? 'border-orange-500 shadow-md'
+                              : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: (localConfig.heroType || 'rail') === 'rail' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                          }}
+                        >
+                          {(localConfig.heroType || 'rail') === 'rail' && (
+                            <span className="absolute top-3 right-3 text-[10px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full">
+                              Ativo
+                            </span>
+                          )}
+
+                          {/* Ilustração Visual da Arara Metálica */}
+                          <div className="h-28 w-full rounded-xl flex flex-col items-center justify-center p-2 mb-3 bg-zinc-950/20 border border-zinc-500/20 relative">
+                            {/* Cano cromado */}
+                            <div className="w-full h-2 rounded-full bg-gradient-to-r from-zinc-500 via-zinc-200 to-zinc-500 shadow-xs mb-2" />
+                            {/* Cabides com camisas suspensas */}
+                            <div className="flex items-center justify-center gap-3 w-full">
+                              {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className={`flex flex-col items-center transition-transform ${i === 2 ? 'scale-110 -translate-y-1' : 'opacity-60 scale-90'}`}>
+                                  <div className="w-3 h-2 border-t border-l border-zinc-400 rotate-45 rounded-tl" />
+                                  <div className="w-8 h-10 rounded-t-sm rounded-b-xs bg-zinc-700/70 border border-zinc-400/40" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold uppercase font-sans">Arara Metálica 3D</span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">The Rail</span>
+                            </div>
+                            <p className="text-[11px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Camisas em suspensão real com balanço pendular interativo, efeito de onda física e ticker marquee laranja.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Card 2: Passarela 3D Giratória (Shop the Look) */}
+                        <div
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'runway' })}
+                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            localConfig.heroType === 'runway'
+                              ? 'border-orange-500 shadow-md'
+                              : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: localConfig.heroType === 'runway' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                          }}
+                        >
+                          {localConfig.heroType === 'runway' && (
+                            <span className="absolute top-3 right-3 text-[10px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full">
+                              Ativo
+                            </span>
+                          )}
+
+                          {/* Ilustração Visual da Passarela 3D Giratória */}
+                          <div className="h-28 w-full rounded-xl flex items-center justify-center p-2 mb-3 bg-zinc-950/20 border border-zinc-500/20 relative overflow-hidden">
+                            {/* Modelos vizinhos com blur */}
+                            <div className="w-8 h-20 rounded-md bg-zinc-600/40 blur-[2px] scale-90 -translate-x-12 absolute" />
+                            {/* Modelo central nítido com pin */}
+                            <div className="w-10 h-24 rounded-lg bg-zinc-300/80 border border-white/60 shadow-lg relative flex flex-col items-center justify-center z-10">
+                              <div className="w-4 h-4 rounded-full bg-orange-500 animate-ping absolute" />
+                              <div className="w-3 h-3 rounded-full bg-zinc-950 border border-white z-10" />
+                            </div>
+                            {/* Modelo vizinho direito com blur */}
+                            <div className="w-8 h-20 rounded-md bg-zinc-600/40 blur-[2px] scale-90 translate-x-12 absolute" />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold uppercase font-sans">Passarela 3D Giratória</span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Shop the Look</span>
+                            </div>
+                            <p className="text-[11px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Modelos em 3D circular com profundidade focal (blur), arrasto touch/mouse, pins interativos e gaveta "In this look".
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SISTEMA ESTRATÉGICO DE TEMAS & CORES */}
+                    <div className="space-y-4 pt-2 border-t" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                      <div>
+                        <span className="text-[11px] font-mono uppercase tracking-wider block font-bold text-orange-500">
+                          2. Estratégia de Cores e Temas
+                        </span>
+                        <p className="text-[10px] font-mono opacity-60">
+                          Defina se o cliente poderá alternar o tema ou se a loja terá uma estética fixa única.
+                        </p>
+                      </div>
+
+                      {/* Modo Dual vs Modo Fixo Único */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setLocalConfig({ ...localConfig, themeMode: 'dual' })}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                            (localConfig.themeMode || 'dual') === 'dual'
+                              ? 'border-orange-500 bg-orange-500/10'
+                              : isDark ? 'border-zinc-700 bg-zinc-800/40' : 'border-zinc-300 bg-zinc-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <Sun className="w-3.5 h-3.5 text-amber-400" />
+                              <Moon className="w-3.5 h-3.5 text-zinc-400" />
+                              <span className="font-bold text-xs uppercase font-sans">Modo Dual (Claro & Escuro)</span>
+                            </div>
+                            <span className="text-[10px] font-mono opacity-70 block mt-0.5">
+                              Botão Sol/Lua visível no topo para o cliente alternar.
+                            </span>
+                          </div>
+                          {(localConfig.themeMode || 'dual') === 'dual' && (
+                            <Check className="w-4 h-4 text-orange-500 shrink-0" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setLocalConfig({ ...localConfig, themeMode: 'single' })}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                            localConfig.themeMode === 'single'
+                              ? 'border-orange-500 bg-orange-500/10'
+                              : isDark ? 'border-zinc-700 bg-zinc-800/40' : 'border-zinc-300 bg-zinc-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <Lock className="w-3.5 h-3.5 text-orange-500" />
+                              <span className="font-bold text-xs uppercase font-sans">Modo Fixo Único</span>
+                            </div>
+                            <span className="text-[10px] font-mono opacity-70 block mt-0.5">
+                              Sem botão no topo. Fica 100% no tema padrão que você definir.
+                            </span>
+                          </div>
+                          {localConfig.themeMode === 'single' && (
+                            <Check className="w-4 h-4 text-orange-500 shrink-0" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Seletor de Tema Inicial / Fixo */}
+                      <div>
+                        <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
+                          Tema Padrão / Inicial da Loja
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 max-w-xs">
+                          <button
+                            type="button"
+                            onClick={() => setLocalConfig({ ...localConfig, defaultTheme: 'dark' })}
+                            className={`py-2 px-3 rounded-lg border text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                              (localConfig.defaultTheme || 'dark') === 'dark'
+                                ? 'bg-zinc-950 text-white border-orange-500'
+                                : isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-zinc-100 border-zinc-300 text-zinc-600'
+                            }`}
+                          >
+                            <Moon className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Escuro (Dark)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setLocalConfig({ ...localConfig, defaultTheme: 'light' })}
+                            className={`py-2 px-3 rounded-lg border text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                              localConfig.defaultTheme === 'light'
+                                ? 'bg-zinc-100 text-zinc-950 border-orange-500'
+                                : isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-zinc-100 border-zinc-300 text-zinc-600'
+                            }`}
+                          >
+                            <Sun className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Claro (Light)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Paletas de Cores Pré-Setadas para o Modo Escuro */}
+                      <div className="space-y-2 pt-2">
+                        <label className="text-[11px] font-mono uppercase tracking-wider block font-bold text-zinc-400">
+                          Paleta do Modo Escuro (Dark Themes):
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {Object.values(DARK_PALETTES).map((pal) => {
+                            const isSelected = (localConfig.darkPalette || 'onyx_industrial') === pal.id;
+                            return (
+                              <div
+                                key={pal.id}
+                                onClick={() => setLocalConfig({ ...localConfig, darkPalette: pal.id })}
+                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                                  isSelected
+                                    ? 'border-orange-500 bg-zinc-900/90 shadow-sm'
+                                    : 'border-zinc-700/60 bg-zinc-800/30 opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs font-sans text-zinc-200">{pal.name}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-orange-500" />}
+                                  </div>
+                                  <p className="text-[10px] font-mono text-zinc-400">{pal.description}</p>
+                                </div>
+
+                                {/* Amostras de Cor (Swatches) */}
+                                <div className="flex items-center gap-1 shrink-0 ml-2">
+                                  {pal.previewColors.map((hex, cIdx) => (
+                                    <span
+                                      key={cIdx}
+                                      className="w-4 h-4 rounded-full border border-white/20 shadow-xs"
+                                      style={{ backgroundColor: hex }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Paletas de Cores Pré-Setadas para o Modo Claro */}
+                      <div className="space-y-2 pt-2">
+                        <label className="text-[11px] font-mono uppercase tracking-wider block font-bold text-zinc-400">
+                          Paleta do Modo Claro (Light Themes):
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {Object.values(LIGHT_PALETTES).map((pal) => {
+                            const isSelected = (localConfig.lightPalette || 'raw_canvas') === pal.id;
+                            return (
+                              <div
+                                key={pal.id}
+                                onClick={() => setLocalConfig({ ...localConfig, lightPalette: pal.id })}
+                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                                  isSelected
+                                    ? 'border-orange-500 bg-zinc-900/90 shadow-sm'
+                                    : 'border-zinc-700/60 bg-zinc-800/30 opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs font-sans text-zinc-200">{pal.name}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-orange-500" />}
+                                  </div>
+                                  <p className="text-[10px] font-mono text-zinc-400">{pal.description}</p>
+                                </div>
+
+                                {/* Amostras de Cor (Swatches) */}
+                                <div className="flex items-center gap-1 shrink-0 ml-2">
+                                  {pal.previewColors.map((hex, cIdx) => (
+                                    <span
+                                      key={cIdx}
+                                      className="w-4 h-4 rounded-full border border-black/20 shadow-xs"
+                                      style={{ backgroundColor: hex }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* IDENTIDADE DA MARCA (LOGO & NOME WHITE-LABEL) */}
+                    <div className="space-y-4 pt-2 border-t" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                      <span className="text-[11px] font-mono uppercase tracking-wider block font-bold text-orange-500">
+                        3. Identidade da Marca (White-Label)
+                      </span>
+
                       {/* Upload / URL da Logo da Marca */}
                       <div
                         className="p-3.5 rounded-xl border space-y-3"
@@ -870,49 +1387,33 @@ export function AdminModal({
                         </div>
                       </div>
 
-                      {/* Nome da Loja & Tema Inicial */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
-                            Nome da Loja / Marca do Cliente (White-Label)
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="ex: Clothes.on ou Nome da Sua Marca"
-                            value={localConfig.storeName || ''}
-                            onChange={(e) => setLocalConfig({ ...localConfig, storeName: e.target.value })}
-                            className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
-                            style={{
-                              backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
-                              borderColor: isDark ? '#363942' : '#d4d4d8',
-                            }}
-                          />
-                          <span className="text-[10px] font-mono opacity-60 block mt-1">
-                            Usado quando não houver imagem de logo definida.
-                          </span>
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
-                            Tema Inicial da Loja (Ao Abrir o Site)
-                          </label>
-                          <select
-                            value={localConfig.defaultTheme || 'dark'}
-                            onChange={(e) => setLocalConfig({ ...localConfig, defaultTheme: e.target.value })}
-                            className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
-                            style={{
-                              backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
-                              borderColor: isDark ? '#363942' : '#d4d4d8',
-                            }}
-                          >
-                            <option value="dark">Modo Escuro / Noturno (Padrão)</option>
-                            <option value="light">Modo Claro</option>
-                          </select>
-                          <span className="text-[10px] font-mono opacity-60 block mt-1">
-                            Define qual tema será exibido na primeira visita do cliente.
-                          </span>
-                        </div>
+                      {/* Nome da Loja */}
+                      <div>
+                        <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">
+                          Nome da Loja / Marca do Cliente (White-Label)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ex: Clothes.on ou Nome da Sua Marca"
+                          value={localConfig.storeName || ''}
+                          onChange={(e) => setLocalConfig({ ...localConfig, storeName: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold border outline-none focus:border-orange-500"
+                          style={{
+                            backgroundColor: isDark ? '#1a1c20' : '#f8f8f6',
+                            borderColor: isDark ? '#363942' : '#d4d4d8',
+                          }}
+                        />
+                        <span className="text-[10px] font-mono opacity-60 block mt-1">
+                          Usado quando não houver imagem de logo definida.
+                        </span>
                       </div>
+                    </div>
+
+                    {/* CONFIGURAÇÕES DE TEXTO E VENDAS */}
+                    <div className="space-y-4 pt-2 border-t" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                      <span className="text-[11px] font-mono uppercase tracking-wider block font-bold text-orange-500">
+                        4. Marquee, Frete & Atendimento
+                      </span>
 
                       <div>
                         <label className="text-[11px] font-mono uppercase tracking-wider block mb-1 opacity-70">

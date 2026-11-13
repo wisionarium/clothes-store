@@ -74,10 +74,11 @@ export default async function handler(req, res) {
 
       if (key === 'all') {
         // Busca paralela no Cloudflare KV
-        const [config, shirts, catalog] = await Promise.all([
+        const [config, shirts, catalog, looks] = await Promise.all([
           getKvValue('clothes_on_config'),
           getKvValue('clothes_on_shirts'),
           getKvValue('clothes_on_catalog'),
+          getKvValue('clothes_on_looks'),
         ]);
 
         return res.status(200).json({
@@ -87,6 +88,7 @@ export default async function handler(req, res) {
             config,
             shirts,
             catalog,
+            looks,
           },
         });
       }
@@ -115,6 +117,9 @@ export default async function handler(req, res) {
       }
       if (payload.catalog !== undefined) {
         promises.push(putKvValue('clothes_on_catalog', payload.catalog));
+      }
+      if (payload.looks !== undefined) {
+        promises.push(putKvValue('clothes_on_looks', payload.looks));
       }
 
       // Se passou { key, value } individual
