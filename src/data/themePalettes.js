@@ -181,3 +181,4 @@ export function applyThemeVariables(isDark, paletteId) {
     root.style.setProperty(key, value);
   });
 }
+
