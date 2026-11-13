@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
 export const DEFAULT_CONFIG = {
   storeName: 'clothes.on',
   logoUrl: '', // URL ou imagem base64 da Logo do cliente
-  heroType: 'rail', // 'rail' (Arara 3D Cromada) | 'runway' (Passarela 3D Giratória / Shop the Look)
+  heroType: 'runway', // 'runway' (Passarela 3D Giratória / Shop the Look) | 'rail' (Arara 3D Cromada)
   themeMode: 'dual', // 'dual' (Comutador Sol/Lua ativo no topo) | 'single' (Fixo único na loja)
   defaultTheme: 'dark', // 'dark' | 'light' - Tema inicial do site
   darkPalette: 'onyx_industrial', // 'onyx_industrial' | 'midnight_minimal' | 'earth_noir' | 'concrete_monochrome'

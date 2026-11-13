@@ -199,34 +199,38 @@ export function RunwayLookbook({
           let relAngle = ((rawDiff + 540) % 360) - 180; // normalizado entre -180° e +180°
 
           const rad = (relAngle * Math.PI) / 180;
-          const isCenter = Math.abs(relAngle) < 25;
+          const absAngle = Math.abs(relAngle);
+          const isCenter = absAngle < 24;
 
-          // RAIO COMPACTO: Personagens bem próximos como na referência da Zara/Shopify
-          const radiusX = isMobile ? 130 : 175;
-          const radiusZ = isMobile ? 95 : 135;
+          // RAIO & DISTRIBUIÇÃO CIRCULAR PANORÂMICA:
+          // Utiliza projeção angular que abre a visão nos vizinhos mantendo sobreposição elegante de ombros
+          const maxRadiusX = isMobile ? 250 : 390;
+          const radiusZ = isMobile ? 75 : 110;
 
-          // Posição no cilindro 3D
-          const x = Math.sin(rad) * radiusX;
+          // Mapeia suavemente o arco frontal (-135° a +135°) para distribuição horizontal
+          const arcAngleRad = (relAngle * 0.65 * Math.PI) / 180;
+          const x = Math.sin(arcAngleRad) * maxRadiusX;
           const z = (Math.cos(rad) - 1) * radiusZ;
-          const y = (1 - Math.cos(rad)) * -18; // elevação suave da arquibancada circular
+          const y = (1 - Math.cos(rad)) * -14; // ligeira elevação circular de palco
 
           // Profundidade normalizada (1.0 na frente, 0.0 atrás)
           const depthNorm = Math.max(0, (Math.cos(rad) + 1) / 2);
 
-          // Escala: 1.0 na frente, 0.82 nos vizinhos
-          const scale = 0.80 + depthNorm * 0.20;
+          // Escala: 1.0 na frente, 0.88 no primeiro vizinho, 0.78 no segundo
+          const scale = 0.76 + depthNorm * 0.24;
 
-          // Desfoque focal: 0px no centro, 1.8px nos vizinhos, 4px nos distantes
-          const blur = Math.max(0, (1 - Math.cos(rad)) * 2.2);
+          // Desfoque focal tipo câmera aberta (bokeh f/1.8):
+          // 0px no centro, ~1.2px no vizinho imediato, ~3.6px no mais distante
+          const blur = Math.max(0, (1 - Math.cos(rad)) * 2.4);
 
-          // Opacidade: esconde os modelos que estão passando por trás da roda
-          const opacity = Math.abs(relAngle) > 130 ? 0 : 0.45 + depthNorm * 0.55;
+          // Fade out suave para modelos que passam para o fundo do carrossel
+          const opacity = absAngle > 145 ? 0 : Math.max(0, Math.min(1, (145 - absAngle) / 25));
 
           // Z-index para sobreposição correta
           const zIndex = Math.round(depthNorm * 40);
 
-          // Rotação Y para acompanhar a curvatura da roda
-          const rotateY = -relAngle * 0.35;
+          // Rotação Y para acompanhar a curvatura circular da passarela
+          const rotateY = -relAngle * 0.22;
 
           return (
             <motion.div
