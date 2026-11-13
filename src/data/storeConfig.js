@@ -13,7 +13,39 @@ const STORAGE_KEYS = {
 export const DEFAULT_CONFIG = {
   storeName: 'clothes.on',
   logoUrl: '', // URL ou imagem base64 da Logo do cliente
-  heroType: 'runway', // 'runway' (Passarela 3D Giratória / Shop the Look) | 'rail' (Arara 3D Cromada)
+  heroType: 'runway', // 'runway' | 'rail' | 'editorial_banner' | 'split_minimal' | 'bento_grid'
+  heroConfig: {
+    banner: {
+      tag: 'NEW COLLECTION · CONCRETE SEASON',
+      title: 'SILHUETAS ESTRUTURADAS',
+      subtitle: 'Tecidos densos de 260g/m², corte boxy contemporâneo e caimento impecável sem ruídos visuais.',
+      buttonText: 'Explorar Coleção',
+      imageUrl: '/images/looks/model_1.jpg',
+    },
+    split: {
+      tag: 'DROP EXCLUSIVO · EDIÇÃO LIMITADA',
+      title: 'HEAVYWEIGHT OVERSIZED TEE',
+      subtitle: 'Desenvolvida com malha suedine 100% algodão penteado 260g/m². Gola canelada de 3cm que não laceia e silhueta relaxada que sustenta estrutura o dia inteiro.',
+      price: 149.90,
+      badge: '100% ALGODÃO 260G',
+      buttonText: 'Garantir Peça',
+      imageUrl: '/images/looks/model_2.jpg',
+    },
+    bento: {
+      card1Title: 'DROP CONCRETE N° 01',
+      card1Tag: 'LANÇAMENTO EXCLUSIVO',
+      card1Category: 'todos',
+      card1Image: '/images/looks/model_3.jpg',
+      card2Title: 'CALÇAS & ALFAIATARIA',
+      card2Tag: 'WIDE BARREL',
+      card2Category: 'calcas',
+      card2Image: '/images/looks/model_5.jpg',
+      card3Title: 'CAMISETAS OVERSIZED',
+      card3Tag: 'BESTSELLERS',
+      card3Category: 'camisetas',
+      card3Image: '/images/looks/model_4.jpg',
+    },
+  },
   themeMode: 'dual', // 'dual' (Comutador Sol/Lua ativo no topo) | 'single' (Fixo único na loja)
   defaultTheme: 'dark', // 'dark' | 'light' - Tema inicial do site
   darkPalette: 'onyx_industrial', // 'onyx_industrial' | 'midnight_minimal' | 'earth_noir' | 'concrete_monochrome'
@@ -58,7 +90,17 @@ export function getStoredConfig() {
     if (parsed?.storeName && parsed.storeName.toLowerCase() === 'levant') {
       parsed.storeName = 'clothes.on';
     }
-    return { ...DEFAULT_CONFIG, ...parsed };
+    return {
+      ...DEFAULT_CONFIG,
+      ...parsed,
+      heroConfig: {
+        ...DEFAULT_CONFIG.heroConfig,
+        ...(parsed.heroConfig || {}),
+        banner: { ...DEFAULT_CONFIG.heroConfig.banner, ...(parsed.heroConfig?.banner || {}) },
+        split: { ...DEFAULT_CONFIG.heroConfig.split, ...(parsed.heroConfig?.split || {}) },
+        bento: { ...DEFAULT_CONFIG.heroConfig.bento, ...(parsed.heroConfig?.bento || {}) },
+      },
+    };
   } catch {
     return DEFAULT_CONFIG;
   }

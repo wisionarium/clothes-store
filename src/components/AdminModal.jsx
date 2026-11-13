@@ -347,6 +347,34 @@ export function AdminModal({
     }
   };
 
+  const handleHeroConfigChange = (section, field, value) => {
+    setLocalConfig((prev) => ({
+      ...prev,
+      heroConfig: {
+        ...(prev.heroConfig || {}),
+        [section]: {
+          ...(prev.heroConfig?.[section] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const handleHeroPhotoUpload = async (section, field, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A imagem é muito pesada (máximo 10MB). Escolha uma imagem menor.');
+      return;
+    }
+
+    const compressed = await compressImage(file, 1200, 0.88);
+    if (compressed) {
+      handleHeroConfigChange(section, field, compressed);
+    }
+  };
+
   const handleExportBackup = () => {
     const backupData = {
       config: localConfig,
@@ -1032,35 +1060,72 @@ export function AdminModal({
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Card 1: Arara Metálica 3D */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        {/* Card 1: Passarela 3D Giratória (Shop the Look) */}
                         <div
-                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'rail' })}
-                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
-                            (localConfig.heroType || 'rail') === 'rail'
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'runway' })}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            (localConfig.heroType || 'runway') === 'runway'
                               ? 'border-orange-500 shadow-md'
                               : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
                           }`}
                           style={{
-                            backgroundColor: (localConfig.heroType || 'rail') === 'rail' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                            backgroundColor: (localConfig.heroType || 'runway') === 'runway' ? (isDark ? '#23252a' : '#ffffff') : undefined,
                           }}
                         >
-                          {(localConfig.heroType || 'rail') === 'rail' && (
-                            <span className="absolute top-3 right-3 text-[10px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full">
+                          {(localConfig.heroType || 'runway') === 'runway' && (
+                            <span className="absolute top-2.5 right-2.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full z-20">
+                              Ativo
+                            </span>
+                          )}
+
+                          {/* Ilustração Visual da Passarela 3D Giratória */}
+                          <div className="h-24 w-full rounded-xl flex items-center justify-center p-2 mb-2.5 bg-zinc-950/20 border border-zinc-500/20 relative overflow-hidden">
+                            <div className="w-6 h-16 rounded-md bg-zinc-600/40 blur-[2px] scale-90 -translate-x-10 absolute" />
+                            <div className="w-8 h-20 rounded-lg bg-zinc-300/80 border border-white/60 shadow-lg relative flex flex-col items-center justify-center z-10">
+                              <div className="w-3 h-3 rounded-full bg-orange-500 animate-ping absolute" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-zinc-950 border border-white z-10" />
+                            </div>
+                            <div className="w-6 h-16 rounded-md bg-zinc-600/40 blur-[2px] scale-90 translate-x-10 absolute" />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold uppercase font-sans">Passarela 3D Giratória</span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Shop Look</span>
+                            </div>
+                            <p className="text-[10px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Modelos em 3D circular com profundidade focal (blur), arrasto touch/mouse e gaveta de compras.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Card 2: Arara Metálica 3D */}
+                        <div
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'rail' })}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            localConfig.heroType === 'rail'
+                              ? 'border-orange-500 shadow-md'
+                              : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: localConfig.heroType === 'rail' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                          }}
+                        >
+                          {localConfig.heroType === 'rail' && (
+                            <span className="absolute top-2.5 right-2.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full z-20">
                               Ativo
                             </span>
                           )}
 
                           {/* Ilustração Visual da Arara Metálica */}
-                          <div className="h-28 w-full rounded-xl flex flex-col items-center justify-center p-2 mb-3 bg-zinc-950/20 border border-zinc-500/20 relative">
-                            {/* Cano cromado */}
-                            <div className="w-full h-2 rounded-full bg-gradient-to-r from-zinc-500 via-zinc-200 to-zinc-500 shadow-xs mb-2" />
-                            {/* Cabides com camisas suspensas */}
-                            <div className="flex items-center justify-center gap-3 w-full">
+                          <div className="h-24 w-full rounded-xl flex flex-col items-center justify-center p-2 mb-2.5 bg-zinc-950/20 border border-zinc-500/20 relative">
+                            <div className="w-full h-1.5 rounded-full bg-gradient-to-r from-zinc-500 via-zinc-200 to-zinc-500 shadow-xs mb-2" />
+                            <div className="flex items-center justify-center gap-2 w-full">
                               {[1, 2, 3, 4].map((i) => (
                                 <div key={i} className={`flex flex-col items-center transition-transform ${i === 2 ? 'scale-110 -translate-y-1' : 'opacity-60 scale-90'}`}>
-                                  <div className="w-3 h-2 border-t border-l border-zinc-400 rotate-45 rounded-tl" />
-                                  <div className="w-8 h-10 rounded-t-sm rounded-b-xs bg-zinc-700/70 border border-zinc-400/40" />
+                                  <div className="w-2.5 h-1.5 border-t border-l border-zinc-400 rotate-45 rounded-tl" />
+                                  <div className="w-6 h-8 rounded-t-sm rounded-b-xs bg-zinc-700/70 border border-zinc-400/40" />
                                 </div>
                               ))}
                             </div>
@@ -1069,56 +1134,495 @@ export function AdminModal({
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold uppercase font-sans">Arara Metálica 3D</span>
-                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">The Rail</span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">The Rail</span>
                             </div>
-                            <p className="text-[11px] font-sans opacity-75 mt-1 leading-relaxed">
-                              Camisas em suspensão real com balanço pendular interativo, efeito de onda física e ticker marquee laranja.
+                            <p className="text-[10px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Camisas suspensas no trilho cromado com física de balanço real, onda e ticker marquee.
                             </p>
                           </div>
                         </div>
 
-                        {/* Card 2: Passarela 3D Giratória (Shop the Look) */}
+                        {/* Card 3: Banner Editorial Fullscreen */}
                         <div
-                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'runway' })}
-                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
-                            localConfig.heroType === 'runway'
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'editorial_banner' })}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            localConfig.heroType === 'editorial_banner'
                               ? 'border-orange-500 shadow-md'
                               : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
                           }`}
                           style={{
-                            backgroundColor: localConfig.heroType === 'runway' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                            backgroundColor: localConfig.heroType === 'editorial_banner' ? (isDark ? '#23252a' : '#ffffff') : undefined,
                           }}
                         >
-                          {localConfig.heroType === 'runway' && (
-                            <span className="absolute top-3 right-3 text-[10px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full">
+                          {localConfig.heroType === 'editorial_banner' && (
+                            <span className="absolute top-2.5 right-2.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full z-20">
                               Ativo
                             </span>
                           )}
 
-                          {/* Ilustração Visual da Passarela 3D Giratória */}
-                          <div className="h-28 w-full rounded-xl flex items-center justify-center p-2 mb-3 bg-zinc-950/20 border border-zinc-500/20 relative overflow-hidden">
-                            {/* Modelos vizinhos com blur */}
-                            <div className="w-8 h-20 rounded-md bg-zinc-600/40 blur-[2px] scale-90 -translate-x-12 absolute" />
-                            {/* Modelo central nítido com pin */}
-                            <div className="w-10 h-24 rounded-lg bg-zinc-300/80 border border-white/60 shadow-lg relative flex flex-col items-center justify-center z-10">
-                              <div className="w-4 h-4 rounded-full bg-orange-500 animate-ping absolute" />
-                              <div className="w-3 h-3 rounded-full bg-zinc-950 border border-white z-10" />
+                          {/* Ilustração Visual do Banner Editorial */}
+                          <div className="h-24 w-full rounded-xl flex flex-col justify-end p-2.5 mb-2.5 bg-zinc-950/40 border border-zinc-500/20 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                            <div className="relative z-10 space-y-1">
+                              <div className="w-12 h-1.5 rounded-full bg-orange-500" />
+                              <div className="w-24 h-2.5 rounded bg-white/90" />
+                              <div className="w-16 h-1.5 rounded bg-white/50" />
                             </div>
-                            {/* Modelo vizinho direito com blur */}
-                            <div className="w-8 h-20 rounded-md bg-zinc-600/40 blur-[2px] scale-90 translate-x-12 absolute" />
                           </div>
 
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold uppercase font-sans">Passarela 3D Giratória</span>
-                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Shop the Look</span>
+                              <span className="text-xs font-bold uppercase font-sans">Banner Editorial</span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Editorial</span>
                             </div>
-                            <p className="text-[11px] font-sans opacity-75 mt-1 leading-relaxed">
-                              Modelos em 3D circular com profundidade focal (blur), arrasto touch/mouse, pins interativos e gaveta "In this look".
+                            <p className="text-[10px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Campanha de moda imersiva com imagem de impacto, tipografia marcante e botão direto de explorar.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Card 4: Split 50/50 Minimalista */}
+                        <div
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'split_minimal' })}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            localConfig.heroType === 'split_minimal'
+                              ? 'border-orange-500 shadow-md'
+                              : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: localConfig.heroType === 'split_minimal' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                          }}
+                        >
+                          {localConfig.heroType === 'split_minimal' && (
+                            <span className="absolute top-2.5 right-2.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full z-20">
+                              Ativo
+                            </span>
+                          )}
+
+                          {/* Ilustração Visual do Split 50/50 */}
+                          <div className="h-24 w-full rounded-xl flex items-center gap-2 p-2 mb-2.5 bg-zinc-950/20 border border-zinc-500/20 relative overflow-hidden">
+                            <div className="flex-1 space-y-1.5 p-1">
+                              <div className="w-14 h-2 rounded bg-orange-500/80" />
+                              <div className="w-20 h-2.5 rounded bg-zinc-300/80" />
+                              <div className="w-10 h-1.5 rounded bg-zinc-500" />
+                            </div>
+                            <div className="w-16 h-20 rounded-lg bg-zinc-700/60 border border-zinc-500/30 shrink-0 flex items-center justify-center">
+                              <ShoppingBag className="w-3.5 h-3.5 opacity-50" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold uppercase font-sans">Split 50/50 Minimal</span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Split</span>
+                            </div>
+                            <p className="text-[10px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Lado esquerdo com narrativa têxtil, especificações e preço; lado direito com vitrine da peça-chave.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Card 5: Grade Visual Bento Grid */}
+                        <div
+                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'bento_grid' })}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+                            localConfig.heroType === 'bento_grid'
+                              ? 'border-orange-500 shadow-md'
+                              : isDark ? 'border-zinc-700/60 bg-zinc-800/40 opacity-70 hover:opacity-100' : 'border-zinc-300 bg-zinc-50 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: localConfig.heroType === 'bento_grid' ? (isDark ? '#23252a' : '#ffffff') : undefined,
+                          }}
+                        >
+                          {localConfig.heroType === 'bento_grid' && (
+                            <span className="absolute top-2.5 right-2.5 text-[9px] font-mono font-bold uppercase tracking-wider bg-orange-600 text-white px-2 py-0.5 rounded-full z-20">
+                              Ativo
+                            </span>
+                          )}
+
+                          {/* Ilustração Visual do Bento Grid */}
+                          <div className="h-24 w-full rounded-xl flex gap-1.5 p-1.5 mb-2.5 bg-zinc-950/20 border border-zinc-500/20 relative overflow-hidden">
+                            <div className="flex-1 h-full rounded-lg bg-zinc-700/70 border border-zinc-500/30 p-1 flex flex-col justify-end">
+                              <div className="w-8 h-1.5 rounded bg-orange-500" />
+                            </div>
+                            <div className="w-14 h-full flex flex-col gap-1">
+                              <div className="flex-1 rounded-md bg-zinc-800 border border-zinc-600/40" />
+                              <div className="flex-1 rounded-md bg-zinc-800 border border-zinc-600/40" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold uppercase font-sans">Bento Grid Mosaico</span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-500 font-bold">Bento</span>
+                            </div>
+                            <p className="text-[10px] font-sans opacity-75 mt-1 leading-relaxed">
+                              Mosaico assimétrico moderno com card principal de drop e cards laterais de categorias e coleções.
                             </p>
                           </div>
                         </div>
                       </div>
+
+                      {/* PAINEL DE PERSONALIZAÇÃO ESPECÍFICO DO LAYOUT SELECIONADO */}
+                      {localConfig.heroType === 'editorial_banner' && (
+                        <div
+                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
+                          style={{
+                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                            borderColor: isDark ? '#333742' : '#e5e7eb',
+                          }}
+                        >
+                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
+                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Personalizar Banner Editorial
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Tag Superior do Banner
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.banner?.tag || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'tag', e.target.value)}
+                                placeholder="ex: NEW COLLECTION · CONCRETE SEASON"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Texto do Botão de Ação
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.banner?.buttonText || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'buttonText', e.target.value)}
+                                placeholder="ex: Explorar Coleção"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Título Principal da Campanha
+                            </label>
+                            <input
+                              type="text"
+                              value={localConfig.heroConfig?.banner?.title || ''}
+                              onChange={(e) => handleHeroConfigChange('banner', 'title', e.target.value)}
+                              placeholder="ex: SILHUETAS ESTRUTURADAS"
+                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Subtítulo / Descrição da Campanha
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={localConfig.heroConfig?.banner?.subtitle || ''}
+                              onChange={(e) => handleHeroConfigChange('banner', 'subtitle', e.target.value)}
+                              placeholder="Descrição editorial..."
+                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          {/* Foto do Banner */}
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Foto de Fundo do Banner (Upload ou Link)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <label
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
+                                style={{
+                                  borderColor: isDark ? '#434752' : '#d4d4d8',
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                }}
+                              >
+                                <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                <span>Upload Imagem</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleHeroPhotoUpload('banner', 'imageUrl', e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <input
+                                type="text"
+                                placeholder="ou cole o link da foto do banner (URL)"
+                                value={localConfig.heroConfig?.banner?.imageUrl || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'imageUrl', e.target.value)}
+                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PAINEL DE PERSONALIZAÇÃO SPLIT 50/50 */}
+                      {localConfig.heroType === 'split_minimal' && (
+                        <div
+                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
+                          style={{
+                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                            borderColor: isDark ? '#333742' : '#e5e7eb',
+                          }}
+                        >
+                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
+                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              Personalizar Split 50/50 Minimalista
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Tag do Drop
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.split?.tag || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'tag', e.target.value)}
+                                placeholder="ex: DROP EXCLUSIVO"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Preço Especial (R$)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={localConfig.heroConfig?.split?.price || 149.90}
+                                onChange={(e) => handleHeroConfigChange('split', 'price', parseFloat(e.target.value) || 0)}
+                                className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Badge Flutuante
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.split?.badge || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'badge', e.target.value)}
+                                placeholder="ex: 100% ALGODÃO 260G"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Nome da Peça em Destaque
+                            </label>
+                            <input
+                              type="text"
+                              value={localConfig.heroConfig?.split?.title || ''}
+                              onChange={(e) => handleHeroConfigChange('split', 'title', e.target.value)}
+                              placeholder="ex: HEAVYWEIGHT OVERSIZED TEE"
+                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Narrativa / Especificações
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={localConfig.heroConfig?.split?.subtitle || ''}
+                              onChange={(e) => handleHeroConfigChange('split', 'subtitle', e.target.value)}
+                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          {/* Foto de Destaque */}
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Foto da Peça / Modelo em Destaque
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <label
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
+                                style={{
+                                  borderColor: isDark ? '#434752' : '#d4d4d8',
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                }}
+                              >
+                                <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                <span>Upload Imagem</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleHeroPhotoUpload('split', 'imageUrl', e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <input
+                                type="text"
+                                placeholder="ou cole o link da foto da peça (URL)"
+                                value={localConfig.heroConfig?.split?.imageUrl || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'imageUrl', e.target.value)}
+                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PAINEL DE PERSONALIZAÇÃO BENTO GRID */}
+                      {localConfig.heroType === 'bento_grid' && (
+                        <div
+                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
+                          style={{
+                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                            borderColor: isDark ? '#333742' : '#e5e7eb',
+                          }}
+                        >
+                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
+                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5" />
+                              Personalizar Cards do Bento Grid
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {/* Card 1 */}
+                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                                Card 1 (Destaque Grande)
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Título (ex: DROP CONCRETE N° 01)"
+                                  value={localConfig.heroConfig?.bento?.card1Title || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card1Title', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Tag (ex: LANÇAMENTO EXCLUSIVO)"
+                                  value={localConfig.heroConfig?.bento?.card1Tag || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card1Tag', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Card 2 */}
+                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                                Card 2 (Superior Direito - Calças)
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Título (ex: CALÇAS & ALFAIATARIA)"
+                                  value={localConfig.heroConfig?.bento?.card2Title || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card2Title', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Tag (ex: WIDE BARREL)"
+                                  value={localConfig.heroConfig?.bento?.card2Tag || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card2Tag', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Card 3 */}
+                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                                Card 3 (Inferior Direito - Camisetas)
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Título (ex: CAMISETAS OVERSIZED)"
+                                  value={localConfig.heroConfig?.bento?.card3Title || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card3Title', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Tag (ex: BESTSELLERS)"
+                                  value={localConfig.heroConfig?.bento?.card3Tag || ''}
+                                  onChange={(e) => handleHeroConfigChange('bento', 'card3Tag', e.target.value)}
+                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* SISTEMA ESTRATÉGICO DE TEMAS & CORES */}

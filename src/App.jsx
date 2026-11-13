@@ -4,6 +4,9 @@ import { Header } from './components/Header';
 import { NavigationMenu } from './components/NavigationMenu';
 import { ClothesRail } from './components/ClothesRail';
 import { RunwayLookbook } from './components/RunwayLookbook';
+import { EditorialBannerHero } from './components/EditorialBannerHero';
+import { SplitMinimalHero } from './components/SplitMinimalHero';
+import { BentoGridHero } from './components/BentoGridHero';
 import { ProductCatalog } from './components/ProductCatalog';
 import { ProductDetail } from './components/ProductDetail';
 import { EditDrawer } from './components/EditDrawer';
@@ -257,38 +260,88 @@ export default function App() {
         <AnimatePresence mode="wait">
           {viewMode === 'rail' ? (
             <div key="home-view" className="w-full flex flex-col items-center">
-              {/* HERO PRINCIPAL: Passarela 3D Giratória (Shop the Look) ou Arara Metálica 3D */}
-              {storeConfig?.heroType === 'runway' ? (
-                <RunwayLookbook
-                  looks={looks}
-                  allProducts={[...shirts, ...catalog]}
-                  storeName={storeConfig.storeName}
-                  theme={theme}
-                  onSelectProduct={(prod) => {
-                    setSelectedProduct(prod);
-                    setViewMode('detail');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  onAddToCart={handleAddToEdit}
-                />
-              ) : (
-                <ClothesRail
-                  products={shirts}
-                  currentIndex={currentIndex}
-                  onSelectIndex={(newIdx) => {
-                    setCurrentIndex(newIdx);
-                    setSelectedProduct(null);
-                  }}
-                  onUnfold={() => {
-                    setSelectedProduct(currentShirt);
-                    setViewMode('detail');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  marqueeText={storeConfig.marqueeText}
-                  theme={theme}
-                  storeName={storeConfig.storeName}
-                />
-              )}
+              {/* HERO PRINCIPAL: 5 Estilos Selecionáveis no ADM */}
+              {(() => {
+                const currentHero = storeConfig?.heroType || 'runway';
+
+                if (currentHero === 'runway') {
+                  return (
+                    <RunwayLookbook
+                      looks={looks}
+                      allProducts={[...shirts, ...catalog]}
+                      storeName={storeConfig.storeName}
+                      theme={theme}
+                      onSelectProduct={(prod) => {
+                        setSelectedProduct(prod);
+                        setViewMode('detail');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      onAddToCart={handleAddToEdit}
+                    />
+                  );
+                }
+
+                if (currentHero === 'editorial_banner') {
+                  return (
+                    <EditorialBannerHero
+                      config={storeConfig.heroConfig}
+                      theme={theme}
+                      storeName={storeConfig.storeName}
+                      onExplore={() => {
+                        document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    />
+                  );
+                }
+
+                if (currentHero === 'split_minimal') {
+                  return (
+                    <SplitMinimalHero
+                      config={storeConfig.heroConfig}
+                      theme={theme}
+                      allProducts={[...shirts, ...catalog]}
+                      onSelectProduct={(prod) => {
+                        setSelectedProduct(prod);
+                        setViewMode('detail');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      onAddToCart={handleAddToEdit}
+                    />
+                  );
+                }
+
+                if (currentHero === 'bento_grid') {
+                  return (
+                    <BentoGridHero
+                      config={storeConfig.heroConfig}
+                      theme={theme}
+                      onSelectCategory={(cat) => {
+                        setSelectedCategory(cat);
+                      }}
+                    />
+                  );
+                }
+
+                // Default / 'rail': Arara Metálica 3D
+                return (
+                  <ClothesRail
+                    products={shirts}
+                    currentIndex={currentIndex}
+                    onSelectIndex={(newIdx) => {
+                      setCurrentIndex(newIdx);
+                      setSelectedProduct(null);
+                    }}
+                    onUnfold={() => {
+                      setSelectedProduct(currentShirt);
+                      setViewMode('detail');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    marqueeText={storeConfig.marqueeText}
+                    theme={theme}
+                    storeName={storeConfig.storeName}
+                  />
+                );
+              })()}
 
               {/* Catálogo Completo Logo Abaixo da Arara (Calças, Bermudas & Casacos) */}
               <ProductCatalog
