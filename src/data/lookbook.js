@@ -8,7 +8,7 @@ export const DEFAULT_LOOKS = [
     name: 'The City Suit',
     category: 'Drop 01 · Alfaiataria Urbana',
     description: 'Sobreposição contemporânea unindo o caimento solto da alfaiataria pregueada ao conforto do moletom estruturado.',
-    modelImage: '/images/looks/model_1.png',
+    modelImage: '/images/looks/model_1.jpg',
     bgTone: '#e5e7eb',
     productIds: [108, 102, 1], // Casaco Pullover + Calça Alfaiataria + Slab Tee
     pins: [
@@ -22,7 +22,7 @@ export const DEFAULT_LOOKS = [
     name: 'Studio Canvas Day',
     category: 'Drop 01 · Workwear Utilitário',
     description: 'Jaqueta em lona de alta gramatura sobre jeans de silhueta ampla barrel leg.',
-    modelImage: '/images/looks/model_2.png',
+    modelImage: '/images/looks/model_2.jpg',
     bgTone: '#e2e8f0',
     productIds: [106, 101, 7], // Jaqueta Canvas + Calça Jeans Wide + Camiseta Heavy Noir
     pins: [
@@ -36,7 +36,7 @@ export const DEFAULT_LOOKS = [
     name: 'Onyx Monochrome',
     category: 'Drop 02 · Boxy Estruturado',
     description: 'Blazer transpassado sem forro rígido com camiseta de algodão pesado em caimento geométrico.',
-    modelImage: '/images/looks/model_3.png',
+    modelImage: '/images/looks/model_3.jpg',
     bgTone: '#d1d5db',
     productIds: [105, 102, 7], // Blazer + Calça Alfaiataria + Heavy Noir
     pins: [
@@ -50,7 +50,7 @@ export const DEFAULT_LOOKS = [
     name: 'Heavy Boxy Navy',
     category: 'Drop 02 · Street Essentials',
     description: 'Camiseta encorpada 260gsm azul marinho com calça carpenter de sarja crua 100% algodão.',
-    modelImage: '/images/looks/model_4.png',
+    modelImage: '/images/looks/model_4.jpg',
     bgTone: '#e0e7ff',
     productIds: [2, 107], // Port Soléa + Calça Carpenter
     pins: [
@@ -64,7 +64,7 @@ export const DEFAULT_LOOKS = [
     name: 'Field Cargo Drop',
     category: 'Drop 03 · Silhueta Relaxada',
     description: 'Bermuda utilitária com bolsos sanfonados e camiseta verde militar em ribana 2x1 reforçada.',
-    modelImage: '/images/looks/model_5.png',
+    modelImage: '/images/looks/model_5.jpg',
     bgTone: '#ecfdf5',
     productIds: [3, 103], // Field Utility + Bermuda Cargo
     pins: [
@@ -78,7 +78,7 @@ export const DEFAULT_LOOKS = [
     name: 'Washed Concrete',
     category: 'Drop 03 · Pura Forma',
     description: 'Estética brutalista: tons de cinza lavado com bermuda em moletom pesado felpado.',
-    modelImage: '/images/looks/model_6.png',
+    modelImage: '/images/looks/model_6.jpg',
     bgTone: '#f3f4f6',
     productIds: [4, 104], // Raw Concrete + Bermuda French Terry
     pins: [

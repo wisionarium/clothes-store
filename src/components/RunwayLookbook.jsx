@@ -1,65 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Play, Pause, X, ShoppingBag, ArrowRight, Eye, Check } from 'lucide-react';
-
-// Figura ilustrativa de modelo editorial em caso de ausência de foto externa
-function DefaultModelSilhouette({ lookIndex = 0 }) {
-  const styles = [
-    { topColor: '#373a40', bottomColor: '#2b3342', skin: '#d4a373', hair: '#1a1a1a', height: 420 },
-    { topColor: '#474e38', bottomColor: '#1e2430', skin: '#e0ac69', hair: '#2b1d0c', height: 430 },
-    { topColor: '#171718', bottomColor: '#23252a', skin: '#c68642', hair: '#0f0f0f', height: 425 },
-    { topColor: '#1e2b45', bottomColor: '#d6d3c9', skin: '#f1c27d', hair: '#3a2618', height: 435 },
-    { topColor: '#3d4a3b', bottomColor: '#968972', skin: '#8d5524', hair: '#141414', height: 420 },
-    { topColor: '#5c5f66', bottomColor: '#222326', skin: '#e0ac69', hair: '#261b11', height: 428 },
-  ];
-  const s = styles[lookIndex % styles.length];
-
-  return (
-    <svg viewBox="0 0 200 480" className="w-full h-full max-h-[460px] drop-shadow-xl select-none pointer-events-none" preserveAspectRatio="xMidYMid meet">
-      {/* Sombra suave no chão */}
-      <ellipse cx="100" cy="465" rx="65" ry="10" fill="rgba(0,0,0,0.18)" filter="blur(6px)" />
-      
-      {/* Cabeça e Cabelo */}
-      <ellipse cx="100" cy="56" rx="17" ry="22" fill={s.skin} />
-      {/* Cabelo moderno volumoso */}
-      <path d="M 81 50 Q 100 24 119 50 Q 116 35 100 35 Q 84 35 81 50 Z" fill={s.hair} />
-      {/* Pescoço com gola alta/ribana */}
-      <rect x="92" y="74" width="16" height="15" fill={s.skin} />
-      <path d="M 88 84 Q 100 90 112 84 Q 108 92 100 92 Q 92 92 88 84 Z" fill="#ffffff" opacity="0.8" />
-
-      {/* Torso: Moletom / Casaco Boxy com Ombros Caídos */}
-      <path
-        d="M 60 92 Q 100 87 140 92 L 152 145 L 140 240 Q 100 244 60 240 L 48 145 Z"
-        fill={s.topColor}
-      />
-      {/* Dobras estruturadas do casaco */}
-      <path d="M 68 120 Q 95 140 102 235" stroke="rgba(0,0,0,0.25)" strokeWidth="2.5" fill="none" />
-      <path d="M 132 120 Q 105 140 98 235" stroke="rgba(0,0,0,0.25)" strokeWidth="2.5" fill="none" />
-
-      {/* Braços cruzados ou relaxados (pose editorial) */}
-      <path d="M 52 100 Q 38 150 48 200 Q 75 220 100 215 Q 125 220 152 200 Q 162 150 148 100" stroke={s.topColor} strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-
-      {/* Barra de camiseta aparecendo sutilmente por baixo */}
-      <path d="M 72 238 Q 100 243 128 238 L 129 248 Q 100 253 71 248 Z" fill="#ffffff" opacity="0.9" />
-
-      {/* Calça Ampla (Wide-leg / Barrel Leg) */}
-      <path
-        d="M 68 248 L 52 425 Q 75 430 96 425 L 100 290 L 104 425 Q 125 430 148 425 L 132 248 Z"
-        fill={s.bottomColor}
-      />
-      {/* Vinco / costura central da calça */}
-      <line x1="74" y1="260" x2="74" y2="420" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" />
-      <line x1="126" y1="260" x2="126" y2="420" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" />
-
-      {/* Tênis Chunky / Sneaker Streetwear */}
-      <path d="M 50 422 Q 40 435 48 448 L 96 448 Q 98 435 92 422 Z" fill="#e5e5e5" />
-      <path d="M 46 444 Q 72 452 98 444 L 98 449 Q 72 457 46 449 Z" fill="#18181b" />
-      
-      <path d="M 104 422 Q 102 435 104 448 L 152 448 Q 160 435 150 422 Z" fill="#e5e5e5" />
-      <path d="M 102 444 Q 128 452 154 444 L 154 449 Q 128 457 102 449 Z" fill="#18181b" />
-    </svg>
-  );
-}
+import { ChevronLeft, ChevronRight, Play, Pause, X, ShoppingBag, Eye, Check } from 'lucide-react';
 
 export function RunwayLookbook({
   looks = [],
@@ -78,12 +19,24 @@ export function RunwayLookbook({
   const containerRef = useRef(null);
   const autoPlayRef = useRef(null);
 
-  // Drag / Swipe States
-  const [dragOffset, setDragOffset] = useState(0);
-  const isDraggingRef = useRef(false);
-  const dragStartXRef = useRef(0);
+  // Responsividade
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+  });
 
-  const totalLooks = looks.length || 1;
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Drag / Swipe States para a rotação contínua da roda
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartXRef = useRef(0);
+  const dragTimeStartRef = useRef(0);
+
+  const totalLooks = looks.length || 6;
   const currentLook = looks[activeIndex] || looks[0] || {};
 
   // Produtos que compõem o look atual
@@ -99,12 +52,12 @@ export function RunwayLookbook({
     setActiveIndex((prev) => (prev < totalLooks - 1 ? prev + 1 : 0));
   }, [totalLooks]);
 
-  // Autoplay da passarela quando ativo
+  // Autoplay da roda quando ativo
   useEffect(() => {
     if (isPlaying) {
       autoPlayRef.current = setInterval(() => {
         handleNext();
-      }, 4500);
+      }, 4200);
     } else {
       if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     }
@@ -113,51 +66,59 @@ export function RunwayLookbook({
     };
   }, [isPlaying, handleNext]);
 
-  // Touch Swipe Handlers (Celular)
+  // --- TOUCH SWIPE HANDLERS (CELULAR) ---
   const handleTouchStart = (e) => {
     if (!e.touches || e.touches.length === 0) return;
-    isDraggingRef.current = true;
+    setIsDragging(true);
     dragStartXRef.current = e.touches[0].clientX;
+    dragTimeStartRef.current = Date.now();
     setDragOffset(0);
   };
 
   const handleTouchMove = (e) => {
-    if (!isDraggingRef.current || !e.touches || e.touches.length === 0) return;
+    if (!isDragging || !e.touches || e.touches.length === 0) return;
     const diff = e.touches[0].clientX - dragStartXRef.current;
     setDragOffset(diff);
   };
 
   const handleTouchEnd = () => {
-    if (!isDraggingRef.current) return;
-    isDraggingRef.current = false;
-    if (dragOffset > 45) {
+    if (!isDragging) return;
+    setIsDragging(false);
+    const duration = Date.now() - dragTimeStartRef.current;
+    const velocity = Math.abs(dragOffset) / Math.max(duration, 1);
+
+    // Se houve arrasto significativo ou flick rápido
+    if (dragOffset > 35 || (dragOffset > 15 && velocity > 0.4)) {
       handlePrev();
-    } else if (dragOffset < -45) {
+    } else if (dragOffset < -35 || (dragOffset < -15 && velocity > 0.4)) {
       handleNext();
     }
     setDragOffset(0);
   };
 
-  // Mouse Drag Handlers (Computador)
+  // --- MOUSE DRAG HANDLERS (COMPUTADOR) ---
   const handleMouseDown = (e) => {
-    isDraggingRef.current = true;
+    setIsDragging(true);
     dragStartXRef.current = e.clientX;
+    dragTimeStartRef.current = Date.now();
     setDragOffset(0);
 
     const onMouseMove = (moveEvent) => {
-      if (!isDraggingRef.current) return;
       setDragOffset(moveEvent.clientX - dragStartXRef.current);
     };
 
     const onMouseUp = (upEvent) => {
-      isDraggingRef.current = false;
+      setIsDragging(false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
 
       const finalDiff = upEvent.clientX - dragStartXRef.current;
-      if (finalDiff > 60) {
+      const duration = Date.now() - dragTimeStartRef.current;
+      const velocity = Math.abs(finalDiff) / Math.max(duration, 1);
+
+      if (finalDiff > 45 || (finalDiff > 20 && velocity > 0.4)) {
         handlePrev();
-      } else if (finalDiff < -60) {
+      } else if (finalDiff < -45 || (finalDiff < -20 && velocity > 0.4)) {
         handleNext();
       }
       setDragOffset(0);
@@ -172,6 +133,12 @@ export function RunwayLookbook({
   const bundleDiscount = subtotalLook * 0.10;
   const bundleTotal = subtotalLook - bundleDiscount;
 
+  // Parâmetros da roda circular 3D
+  const angleStep = 360 / totalLooks; // 60° para 6 looks
+  // Ângulo contínuo que gira a roda durante o arrasto
+  const dragAngleOffset = (dragOffset / (isMobile ? 180 : 280)) * angleStep;
+  const currentWheelAngle = -activeIndex * angleStep + dragAngleOffset;
+
   return (
     <section className="relative w-full max-w-full overflow-hidden flex flex-col items-center select-none pt-4 sm:pt-6 pb-6 sm:pb-10 transition-colors">
       {/* Título Superior "Try the Look." */}
@@ -184,7 +151,7 @@ export function RunwayLookbook({
             Try the Look<span className="text-orange-500">.</span>
           </h2>
           <p className="text-xs sm:text-sm font-mono opacity-70 mt-1 max-w-xl">
-            {totalLooks} looks autorais da cabeça aos pés. Toque no modelo ou nos pins para ver as peças usadas.
+            {totalLooks} looks autorais da cabeça aos pés. Arraste para girar a roda e toque para ver as peças usadas.
           </p>
         </div>
 
@@ -203,56 +170,63 @@ export function RunwayLookbook({
         </button>
       </div>
 
-      {/* ÁREA DA PASSARELA 3D GIRATÓRIA (DEPTH RUNWAY CAROUSEL) */}
+      {/* ÁREA DA RODA GIRATÓRIA 3D (CIRCULAR CAROUSEL WHEEL) */}
       <div
         ref={containerRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
-        className="relative w-full max-w-6xl h-[380px] sm:h-[480px] md:h-[540px] flex items-center justify-center cursor-grab active:cursor-grabbing overflow-visible my-2"
+        style={{ perspective: 1200 }}
+        className="relative w-full max-w-6xl h-[400px] sm:h-[490px] md:h-[550px] flex items-center justify-center cursor-grab active:cursor-grabbing overflow-visible my-1 select-none"
       >
+        {/* Iluminação do Palco Circular no Chão */}
+        <div
+          className="absolute bottom-4 sm:bottom-6 w-[320px] sm:w-[600px] h-20 sm:h-28 rounded-[100%] pointer-events-none transition-opacity"
+          style={{
+            background: isDark
+              ? 'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, transparent 80%)'
+              : 'radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.02) 50%, transparent 80%)',
+          }}
+        />
+
+        {/* Fila Circular de Modelos */}
         {looks.map((look, idx) => {
-          // Calcula a distância circular em relação ao ativo
-          let dist = idx - activeIndex;
-          if (dist > totalLooks / 2) dist -= totalLooks;
-          if (dist < -totalLooks / 2) dist += totalLooks;
+          // Ângulo base deste modelo no anel da roda
+          const baseAngle = idx * angleStep;
+          // Ângulo relativo em relação à câmera
+          let rawDiff = (baseAngle + currentWheelAngle) % 360;
+          let relAngle = ((rawDiff + 540) % 360) - 180; // normalizado entre -180° e +180°
 
-          const isCenter = dist === 0;
-          const absDist = Math.abs(dist);
+          const rad = (relAngle * Math.PI) / 180;
+          const isCenter = Math.abs(relAngle) < 25;
 
-          // Efeito de Profundidade Focal (Blur progressivo + Escala)
-          let scale = 1;
-          let blur = 0;
-          let opacity = 1;
-          let zIndex = 30;
-          let xOffset = 0;
+          // RAIO COMPACTO: Personagens bem próximos como na referência da Zara/Shopify
+          const radiusX = isMobile ? 130 : 175;
+          const radiusZ = isMobile ? 95 : 135;
 
-          if (isCenter) {
-            scale = 1;
-            blur = 0;
-            opacity = 1;
-            zIndex = 30;
-            xOffset = dragOffset; // segue o arrasto do dedo em tempo real
-          } else if (absDist === 1) {
-            scale = 0.86;
-            blur = 2.5; // leve desfoque suave
-            opacity = 0.72;
-            zIndex = 20;
-            xOffset = (dist > 0 ? 1 : -1) * (window.innerWidth < 640 ? 150 : 260) + dragOffset * 0.4;
-          } else if (absDist === 2) {
-            scale = 0.74;
-            blur = 5; // desfoque cinematográfico
-            opacity = 0.38;
-            zIndex = 10;
-            xOffset = (dist > 0 ? 1 : -1) * (window.innerWidth < 640 ? 250 : 440) + dragOffset * 0.2;
-          } else {
-            scale = 0.62;
-            blur = 8;
-            opacity = 0;
-            zIndex = 0;
-            xOffset = (dist > 0 ? 1 : -1) * 600;
-          }
+          // Posição no cilindro 3D
+          const x = Math.sin(rad) * radiusX;
+          const z = (Math.cos(rad) - 1) * radiusZ;
+          const y = (1 - Math.cos(rad)) * -18; // elevação suave da arquibancada circular
+
+          // Profundidade normalizada (1.0 na frente, 0.0 atrás)
+          const depthNorm = Math.max(0, (Math.cos(rad) + 1) / 2);
+
+          // Escala: 1.0 na frente, 0.82 nos vizinhos
+          const scale = 0.80 + depthNorm * 0.20;
+
+          // Desfoque focal: 0px no centro, 1.8px nos vizinhos, 4px nos distantes
+          const blur = Math.max(0, (1 - Math.cos(rad)) * 2.2);
+
+          // Opacidade: esconde os modelos que estão passando por trás da roda
+          const opacity = Math.abs(relAngle) > 130 ? 0 : 0.45 + depthNorm * 0.55;
+
+          // Z-index para sobreposição correta
+          const zIndex = Math.round(depthNorm * 40);
+
+          // Rotação Y para acompanhar a curvatura da roda
+          const rotateY = -relAngle * 0.35;
 
           return (
             <motion.div
@@ -264,35 +238,32 @@ export function RunwayLookbook({
                   setIsLookDrawerOpen(true);
                 }
               }}
-              animate={{
-                x: xOffset,
-                scale,
+              style={{
+                position: 'absolute',
+                transform: `translate3d(${x}px, ${y}px, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
                 filter: `blur(${blur}px)`,
                 opacity,
                 zIndex,
+                transition: isDragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), filter 0.4s ease, opacity 0.4s ease',
               }}
-              transition={{
-                type: 'spring',
-                stiffness: 280,
-                damping: 26,
-                mass: 0.8,
-              }}
-              className="absolute top-0 bottom-0 flex flex-col items-center justify-end w-[240px] sm:w-[320px] md:w-[360px] pb-4 transition-transform group"
+              className="flex flex-col items-center justify-end w-[220px] sm:w-[280px] md:w-[320px] pb-4 group"
             >
-              {/* Modelo (Foto Real ou Silhueta Vetorial) */}
-              <div className="relative w-full h-[320px] sm:h-[430px] md:h-[480px] flex items-center justify-center">
-                {look.modelImage && typeof look.modelImage === 'string' && look.modelImage.trim().length > 0 && !look.modelImage.startsWith('/images/looks') ? (
-                  <img
-                    src={look.modelImage}
-                    alt={look.name}
-                    className="w-full h-full object-contain drop-shadow-2xl pointer-events-none select-none"
-                    draggable={false}
-                  />
-                ) : (
-                  <DefaultModelSilhouette lookIndex={idx} />
-                )}
+              {/* Sombra de Contato Suave no Chão */}
+              <div
+                className="w-28 sm:w-36 h-3 rounded-[100%] bg-black/35 blur-xs -mb-1 shrink-0 transition-opacity"
+                style={{ opacity: 0.25 + depthNorm * 0.35 }}
+              />
 
-                {/* Pins / Hotspots Interativos (Apenas no modelo central) */}
+              {/* Foto Real do Modelo Streetwear */}
+              <div className="relative w-full h-[320px] sm:h-[420px] md:h-[480px] flex items-center justify-center">
+                <img
+                  src={look.modelImage || `/images/looks/model_${(idx % 6) + 1}.jpg`}
+                  alt={look.name}
+                  className="w-full h-full object-contain drop-shadow-xl pointer-events-none select-none rounded-lg"
+                  draggable={false}
+                />
+
+                {/* Pins / Hotspots Interativos (Apenas no modelo central ativo) */}
                 {isCenter && (look.pins || []).map((pin) => {
                   const linkedProd = allProducts.find((p) => p.id === pin.productId);
                   const isPinActive = activePin === pin.id;
@@ -310,30 +281,30 @@ export function RunwayLookbook({
                       }}
                       className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group/pin cursor-pointer"
                     >
-                      {/* Círculo pulsante */}
+                      {/* Ponto Pulsante */}
                       <div className="relative flex items-center justify-center">
-                        <span className="animate-ping absolute inline-flex h-7 w-7 rounded-full bg-white opacity-40" />
-                        <div className="w-6 h-6 rounded-full bg-zinc-950/90 text-white border-2 border-white flex items-center justify-center shadow-lg transition-transform group-hover/pin:scale-110">
+                        <span className="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-white opacity-40" />
+                        <div className="w-5 h-5 rounded-full bg-zinc-950 text-white border-2 border-white flex items-center justify-center shadow-lg transition-transform group-hover/pin:scale-115">
                           <span className="w-2 h-2 rounded-full bg-orange-500" />
                         </div>
                       </div>
 
-                      {/* Tooltip ao passar mouse / tocar no pin */}
+                      {/* Tooltip ao passar o mouse */}
                       <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-2 hidden group-hover/pin:flex flex-col items-center pointer-events-none z-50">
-                        <div className="bg-zinc-950 text-white text-[10px] font-mono font-bold px-2.5 py-1 rounded shadow-xl whitespace-nowrap border border-white/15">
+                        <div className="bg-zinc-950/95 text-white text-[10px] font-mono font-bold px-2.5 py-1 rounded-md shadow-xl whitespace-nowrap border border-white/20">
                           {pin.label || linkedProd?.name}
                           {linkedProd?.price && ` · R$ ${linkedProd.price.toFixed(2)}`}
                         </div>
-                        <div className="w-1.5 h-1.5 bg-zinc-950 rotate-45 -mt-0.5 border-r border-b border-white/15" />
+                        <div className="w-1.5 h-1.5 bg-zinc-950 rotate-45 -mt-0.5 border-r border-b border-white/20" />
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Selo Central no Hover */}
+                {/* Botão Flutuante 'Ver Look Completo' no Modelo Central */}
                 {isCenter && (
-                  <div className="absolute bottom-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <span className="px-3.5 py-1.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-zinc-950/85 text-white backdrop-blur-xs border border-white/20 shadow-xl">
+                  <div className="absolute bottom-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <span className="px-3.5 py-1.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-zinc-950/90 text-white backdrop-blur-xs border border-white/25 shadow-xl flex items-center gap-1">
                       Ver Look Completo ↗
                     </span>
                   </div>
@@ -344,12 +315,12 @@ export function RunwayLookbook({
         })}
       </div>
 
-      {/* BARRA DE TIMELINE & PAGINAÇÃO INFERIOR ESTILO EDITORIAL */}
+      {/* BARRA DE TIMELINE & PAGINAÇÃO INFERIOR */}
       <div className="w-full max-w-4xl mx-auto px-4 mt-2 sm:mt-4 flex items-center justify-between gap-3 text-xs font-mono">
         {/* Seta Esquerda */}
         <button
           onClick={handlePrev}
-          title="Look Anterior"
+          title="Girar para o Look Anterior"
           className="p-2 rounded-full hover:bg-zinc-500/10 transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -364,8 +335,8 @@ export function RunwayLookbook({
                 <button
                   key={l.id || i}
                   onClick={() => setActiveIndex(i)}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all cursor-pointer ${
-                    isActive ? 'font-bold text-orange-500' : 'opacity-40 hover:opacity-80'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    isActive ? 'font-bold text-orange-500 bg-orange-500/10' : 'opacity-40 hover:opacity-80'
                   }`}
                 >
                   <span className="text-[11px] tracking-wider">{l.number || `0${i + 1}`}</span>
@@ -389,7 +360,7 @@ export function RunwayLookbook({
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            title={isPlaying ? "Pausar rotação" : "Girar automaticamente"}
+            title={isPlaying ? "Pausar rotação contínua" : "Girar automaticamente"}
             className="p-2 rounded-full hover:bg-zinc-500/10 transition-colors cursor-pointer opacity-70 hover:opacity-100"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5 text-orange-500" /> : <Play className="w-3.5 h-3.5" />}
@@ -397,7 +368,7 @@ export function RunwayLookbook({
 
           <button
             onClick={handleNext}
-            title="Próximo Look"
+            title="Girar para o Próximo Look"
             className="p-2 rounded-full hover:bg-zinc-500/10 transition-colors cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
@@ -590,4 +561,3 @@ export function RunwayLookbook({
     </section>
   );
 }
-
