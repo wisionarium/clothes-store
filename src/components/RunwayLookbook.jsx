@@ -203,35 +203,39 @@ export function RunwayLookbook({
           const absAngle = Math.abs(relAngle);
           const isCenter = absAngle < 24;
 
-          // RAIO & DISTRIBUIÇÃO CIRCULAR PANORÂMICA:
-          // Utiliza projeção angular que abre a visão nos vizinhos mantendo sobreposição elegante de ombros
-          const maxRadiusX = isMobile ? 250 : 390;
-          const radiusZ = isMobile ? 75 : 110;
+          // DISTÂNCIA MÍNIMA & COMPACTA ENTRE OS MANEQUINS (Conforme foto de referência):
+          // Modelos alinhados ombro a ombro fechado, com braços do modelo central sobrepondo os vizinhos
+          const stepX = isMobile ? 86 : 136;
+          const normalizedAngle = relAngle / angleStep; // 0 no centro, ±1 no vizinho imediato, ±2 no seguinte
+          const x = Math.sign(normalizedAngle) * Math.pow(Math.abs(normalizedAngle), 0.90) * stepX;
 
-          // Mapeia suavemente o arco frontal (-135° a +135°) para distribuição horizontal
-          const arcAngleRad = (relAngle * 0.65 * Math.PI) / 180;
-          const x = Math.sin(arcAngleRad) * maxRadiusX;
-          const z = (Math.cos(rad) - 1) * radiusZ;
-          const y = (1 - Math.cos(rad)) * -14; // ligeira elevação circular de palco
-
-          // Profundidade normalizada (1.0 na frente, 0.0 atrás)
+          // Profundidade normalizada (1.0 no centro frontal, 0.0 atrás)
           const depthNorm = Math.max(0, (Math.cos(rad) + 1) / 2);
 
-          // Escala: 1.0 na frente, 0.88 no primeiro vizinho, 0.78 no segundo
-          const scale = 0.76 + depthNorm * 0.24;
+          // Elevação suave em Y (perspectiva de palco com piso recuando no horizonte)
+          const y = (1 - depthNorm) * (isMobile ? -10 : -16);
+          const z = (depthNorm - 1) * (isMobile ? 55 : 85);
 
-          // Desfoque focal tipo câmera aberta (bokeh f/1.8):
-          // 0px no centro, ~1.2px no vizinho imediato, ~3.6px no mais distante
-          const blur = Math.max(0, (1 - Math.cos(rad)) * 2.4);
+          // ESCALA DINÂMICA: O do meio fica sempre ligeiramente maior (1.10) para liderar a passarela
+          // e os vizinhos laterais recuam suavemente (0.95 e 0.84)
+          const scale = 0.82 + Math.pow(depthNorm, 1.5) * 0.28;
+
+          // DESFOQUE FOCAL (BLUR) ULTRA SUTIL & ELEGANTE:
+          // Zero blur no modelo central; vizinhos imediatos com desfoque levíssimo de lente aberta (bokeh)
+          const blur = isCenter ? 0 : Math.min(2.0, (1 - depthNorm) * 2.0);
 
           // Fade out suave para modelos que passam para o fundo do carrossel
           const opacity = absAngle > 145 ? 0 : Math.max(0, Math.min(1, (145 - absAngle) / 25));
 
-          // Z-index para sobreposição correta
-          const zIndex = Math.round(depthNorm * 40);
+          // Z-index para sobreposição correta (o central fica com z-index máximo em frente aos ombros)
+          const zIndex = Math.round(depthNorm * 50);
 
-          // Rotação Y para acompanhar a curvatura circular da passarela
-          const rotateY = -relAngle * 0.22;
+          // Rotação Y suave para acompanhar a curvatura circular da passarela
+          const rotateY = -relAngle * 0.18;
+
+          const modelImgSrc = look.modelImage && look.modelImage.trim().length > 15
+            ? look.modelImage
+            : `/images/looks/model_${(idx % 6) + 1}.jpg`;
 
           return (
             <motion.div
@@ -251,18 +255,12 @@ export function RunwayLookbook({
                 zIndex,
                 transition: isDragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), filter 0.4s ease, opacity 0.4s ease',
               }}
-              className="flex flex-col items-center justify-end w-[220px] sm:w-[280px] md:w-[320px] pb-4 group"
+              className="flex flex-col items-center justify-end w-[220px] sm:w-[280px] md:w-[320px] pb-2 group cursor-pointer"
             >
-              {/* Sombra de Contato Suave no Chão */}
-              <div
-                className="w-28 sm:w-36 h-3 rounded-[100%] bg-black/35 blur-xs -mb-1 shrink-0 transition-opacity"
-                style={{ opacity: 0.25 + depthNorm * 0.35 }}
-              />
-
-              {/* Foto do Manequim Streetwear (PNG sem fundo ou padrão) */}
+              {/* Foto do Manequim Streetwear (PNG sem fundo ou modelo de estúdio) */}
               <div className="relative w-full h-[320px] sm:h-[420px] md:h-[480px] flex items-center justify-center">
                 <img
-                  src={look.modelImage && look.modelImage.trim().length > 15 ? look.modelImage : `/images/looks/model_${(idx % 6) + 1}.jpg`}
+                  src={modelImgSrc}
                   alt={look.name}
                   onError={(e) => {
                     // Fallback imediato se o link externo ou base64 estiver corrompido
@@ -291,7 +289,7 @@ export function RunwayLookbook({
                       }}
                       className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group/pin cursor-pointer"
                     >
-                      {/* Ponto Pulsante */}
+                      {/* Ponto Pulsante Estilo Imagem de Referência */}
                       <div className="relative flex items-center justify-center">
                         <span className="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-white opacity-40" />
                         <div className="w-5 h-5 rounded-full bg-zinc-950 text-white border-2 border-white flex items-center justify-center shadow-lg transition-transform group-hover/pin:scale-115">
@@ -320,6 +318,33 @@ export function RunwayLookbook({
                   </div>
                 )}
               </div>
+
+              {/* Sombra de Contato Suave no Chão */}
+              <div
+                className="w-24 sm:w-34 h-2 rounded-[100%] bg-black/40 blur-[2px] -mb-1 shrink-0 transition-opacity"
+                style={{ opacity: 0.25 + depthNorm * 0.4 }}
+              />
+
+              {/* Reflexo Espelhado Vertical no Piso de Passarela (Luxury Studio Floor) */}
+              <div
+                className="w-full h-12 sm:h-16 overflow-hidden pointer-events-none select-none relative opacity-20 dark:opacity-15 shrink-0"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 80%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 80%)',
+                  transform: 'scaleY(-1)',
+                }}
+              >
+                <img
+                  src={modelImgSrc}
+                  alt=""
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `/images/looks/model_${(idx % 6) + 1}.jpg`;
+                  }}
+                  className="w-full h-[320px] sm:h-[420px] md:h-[480px] object-contain object-bottom filter blur-[0.6px]"
+                  draggable={false}
+                />
+              </div>
             </motion.div>
           );
         })}
@@ -336,34 +361,46 @@ export function RunwayLookbook({
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Linha de Indicadores com Nome do Look Ativo */}
-        <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-x-auto scrollbar-none py-1">
-          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
-            {looks.map((l, i) => {
-              const isActive = i === activeIndex;
-              return (
-                <button
-                  key={l.id || i}
-                  onClick={() => setActiveIndex(i)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    isActive ? 'font-bold text-orange-500 bg-orange-500/10' : 'opacity-40 hover:opacity-80'
-                  }`}
-                >
-                  <span className="text-[11px] tracking-wider">{l.number || `0${i + 1}`}</span>
-                  {isActive && (
-                    <span className="text-[11px] uppercase hidden sm:inline tracking-tight font-sans">
-                      {l.name}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Linha de Indicadores com Nome do Look Ativo e Barra de Progresso Fina */}
+        <div className="flex-1 flex flex-col justify-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+              {looks.map((l, i) => {
+                const isActive = i === activeIndex;
+                return (
+                  <button
+                    key={l.id || i}
+                    onClick={() => setActiveIndex(i)}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                      isActive ? 'font-bold text-orange-500 bg-orange-500/10' : 'opacity-40 hover:opacity-80'
+                    }`}
+                  >
+                    <span className="text-[11px] tracking-wider">{l.number || `0${i + 1}`}</span>
+                    {isActive && (
+                      <span className="text-[11px] uppercase hidden sm:inline tracking-tight font-sans">
+                        {l.name}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Nome do Look no mobile */}
+            <span className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-orange-500">
+              {currentLook.name}
+            </span>
           </div>
 
-          {/* Nome do Look no mobile */}
-          <span className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-orange-500">
-            {currentLook.name}
-          </span>
+          {/* Barra de Progresso Fina Estilo Passarela Editorial (Shopify Reference) */}
+          <div className="w-full h-[2px] rounded-full bg-zinc-500/20 overflow-hidden">
+            <div
+              className="h-full bg-orange-500 transition-all duration-300 rounded-full"
+              style={{
+                width: `${((activeIndex + 1) / totalLooks) * 100}%`,
+              }}
+            />
+          </div>
         </div>
 
         {/* Play/Pause e Seta Direita */}
