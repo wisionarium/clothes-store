@@ -26,8 +26,8 @@ export function AdminModal({
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
 
-  // Aba ativa: 'shirts' | 'catalog' | 'looks' | 'settings' | 'nuvemshop' | 'backup'
-  const [activeTab, setActiveTab] = useState('settings');
+  // Aba ativa: 'hero_editor' | 'catalog' | 'settings' | 'nuvemshop' | 'backup'
+  const [activeTab, setActiveTab] = useState('hero_editor');
 
   // Estado local para edição
   const [localConfig, setLocalConfig] = useState(config);
@@ -35,6 +35,19 @@ export function AdminModal({
   const [localCatalog, setLocalCatalog] = useState(catalog);
   const [localLooks, setLocalLooks] = useState(looks);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Mapeamento dinâmico do editor do topo conforme o layout escolhido pelo lojista
+  const currentHeroType = localConfig.heroType || 'runway';
+  const heroLabels = {
+    runway: { name: 'Manequins 3D (Looks)', icon: Sparkles, badge: 'Passarela 3D' },
+    rail: { name: 'Arara (Camisas)', icon: ShoppingBag, badge: 'The Rail' },
+    editorial_banner: { name: 'Banner Editorial', icon: Sparkles, badge: 'Banner' },
+    split_minimal: { name: 'Split 50/50 Minimal', icon: ShoppingBag, badge: 'Split' },
+    bento_grid: { name: 'Bento Grid Mosaico', icon: Layers, badge: 'Bento' },
+  };
+  const activeHeroInfo = heroLabels[currentHeroType] || heroLabels.runway;
+  const ActiveHeroIcon = activeHeroInfo.icon;
+  const isHeroTabActive = activeTab === 'hero_editor' || activeTab === 'shirts' || activeTab === 'looks';
 
   // Estados de Conexão e Sincronização Nuvemshop
   const [isTestingNuvem, setIsTestingNuvem] = useState(false);
@@ -258,8 +271,8 @@ export function AdminModal({
     });
   };
 
-  // Compressor e otimizador de imagens para garantir carregamento ultrarrápido
-  const compressImage = (file, maxWidth = 1000, quality = 0.85) => {
+  // Compressor e otimizador de imagens com preservação de transparência em PNG/WebP
+  const compressImage = (file, maxWidth = 640, quality = 0.88) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -275,9 +288,20 @@ export function AdminModal({
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, width, height); // Garante canal alfa transparente limpo
           ctx.drawImage(img, 0, 0, width, height);
-          const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          resolve(canvas.toDataURL(mimeType, quality));
+
+          // Para PNG sem fundo: exporta em WebP com canal alfa (reduz ~85% do tamanho e evita estourar cota do localStorage)
+          const isPng = file.type === 'image/png' || file.name?.toLowerCase().endsWith('.png');
+          try {
+            let dataUrl = canvas.toDataURL(isPng ? 'image/webp' : 'image/jpeg', quality);
+            if (!dataUrl || !dataUrl.startsWith('data:image')) {
+              dataUrl = canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', quality);
+            }
+            resolve(dataUrl);
+          } catch {
+            resolve(canvas.toDataURL('image/png'));
+          }
         };
         img.onerror = () => resolve(e.target.result);
         img.src = e.target.result;
@@ -296,7 +320,7 @@ export function AdminModal({
       return;
     }
 
-    const compressed = await compressImage(file, 1000, 0.85);
+    const compressed = await compressImage(file, 640, 0.85);
     if (compressed) {
       handleCatalogChange(index, 'image', compressed);
     }
@@ -311,7 +335,7 @@ export function AdminModal({
       return;
     }
 
-    const compressed = await compressImage(file, 1000, 0.85);
+    const compressed = await compressImage(file, 640, 0.85);
     if (compressed) {
       handleShirtChange(index, 'image', compressed);
     }
@@ -336,15 +360,48 @@ export function AdminModal({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert('A foto do modelo é muito pesada (máximo 10MB). Escolha uma foto menor.');
+    if (file.size > 15 * 1024 * 1024) {
+      alert('A foto do manequim é muito pesada (máximo 15MB). Escolha uma foto menor.');
       return;
     }
 
-    const compressed = await compressImage(file, 1000, 0.88);
+    const compressed = await compressImage(file, 640, 0.88);
     if (compressed) {
       handleLookChange(index, 'modelImage', compressed);
     }
+  };
+
+  // Configuração rápida das peças vestidas pelo manequim com posicionamento automático de pontos (pins)
+  const handleSetLookSlotPiece = (lookIndex, slot, productId) => {
+    const prodIdNum = Number(productId);
+    const allAvailableProducts = [...localShirts, ...localCatalog];
+    const prod = allAvailableProducts.find((p) => p.id === prodIdNum);
+
+    setLocalLooks((prev) => {
+      const copy = [...prev];
+      const look = { ...copy[lookIndex] };
+      const currentPins = Array.isArray(look.pins) ? [...look.pins] : [];
+
+      if (!productId || !prod) {
+        look.pins = currentPins.filter((p) => p.part !== slot);
+      } else {
+        const filtered = currentPins.filter((p) => p.part !== slot);
+        const yPos = slot === 'superior' ? 34 : slot === 'inferior' ? 68 : 20;
+        filtered.push({
+          id: `pin_${slot}`,
+          part: slot,
+          x: 50,
+          y: yPos,
+          productId: prodIdNum,
+          label: prod.name,
+        });
+        look.pins = filtered;
+      }
+
+      look.productIds = Array.from(new Set(look.pins.map((p) => p.productId).filter(Boolean)));
+      copy[lookIndex] = look;
+      return copy;
+    });
   };
 
   const handleHeroConfigChange = (section, field, value) => {
@@ -515,7 +572,7 @@ export function AdminModal({
           ) : (
             /* CONTEÚDO AUTENTICADO: NAVEGAÇÃO POR ABAS */
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-              {/* Barra Lateral de Abas */}
+              {/* Barra Lateral de Abas Inteligente: 1 Único Editor para o Layout Ativo do Topo */}
               <div
                 className="w-full md:w-56 border-b md:border-b-0 md:border-r p-3 sm:p-4 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto"
                 style={{
@@ -523,208 +580,831 @@ export function AdminModal({
                   borderColor: isDark ? '#33363e' : '#e4e4e7',
                 }}
               >
+                {/* Aba 1 Dinâmica: Abre o editor exclusivo do layout selecionado no topo */}
                 <button
-                  onClick={() => setActiveTab('shirts')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  onClick={() => setActiveTab('hero_editor')}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
-                    backgroundColor: activeTab === 'shirts' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
-                    color: activeTab === 'shirts' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
-                    fontWeight: activeTab === 'shirts' ? 'bold' : 'normal',
+                    backgroundColor: isHeroTabActive ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
+                    color: isHeroTabActive ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
+                    fontWeight: isHeroTabActive ? 'bold' : 'normal',
                   }}
                 >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Arara (Camisas)</span>
+                  <ActiveHeroIcon className="w-4 h-4 text-orange-500 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">{activeHeroInfo.name}</span>
+                    <span className="text-[9px] font-mono text-orange-500/80 normal-case font-normal">Topo Ativo</span>
+                  </div>
                 </button>
 
+                {/* Aba 2: Catálogo de Peças */}
                 <button
                   onClick={() => setActiveTab('catalog')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: activeTab === 'catalog' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
                     color: activeTab === 'catalog' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
                     fontWeight: activeTab === 'catalog' ? 'bold' : 'normal',
                   }}
                 >
-                  <Sliders className="w-4 h-4" />
-                  <span>Catálogo de Peças</span>
+                  <Sliders className="w-4 h-4 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">Catálogo de Peças</span>
+                    <span className="text-[9px] font-mono opacity-60 normal-case font-normal">Calças, bermudas, etc.</span>
+                  </div>
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('looks')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
-                  style={{
-                    backgroundColor: activeTab === 'looks' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
-                    color: activeTab === 'looks' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
-                    fontWeight: activeTab === 'looks' ? 'bold' : 'normal',
-                  }}
-                >
-                  <Sparkles className="w-4 h-4 text-orange-500" />
-                  <span>Passarela 3D (Looks)</span>
-                </button>
-
+                {/* Aba 3: Estilo, Hero & Cores */}
                 <button
                   onClick={() => setActiveTab('settings')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: activeTab === 'settings' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
                     color: activeTab === 'settings' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
                     fontWeight: activeTab === 'settings' ? 'bold' : 'normal',
                   }}
                 >
-                  <Palette className="w-4 h-4 text-orange-500" />
-                  <span>Estilo, Hero & Cores</span>
+                  <Palette className="w-4 h-4 text-orange-500 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">Estilo, Hero & Cores</span>
+                    <span className="text-[9px] font-mono opacity-60 normal-case font-normal">Alternar layouts e temas</span>
+                  </div>
                 </button>
 
+                {/* Aba 4: Nuvemshop */}
                 <button
                   onClick={() => setActiveTab('nuvemshop')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: activeTab === 'nuvemshop' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
                     color: activeTab === 'nuvemshop' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
                     fontWeight: activeTab === 'nuvemshop' ? 'bold' : 'normal',
                   }}
                 >
-                  <ExternalLink className="w-4 h-4 text-orange-500" />
-                  <span>Nuvemshop ☁️</span>
+                  <ExternalLink className="w-4 h-4 text-orange-500 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">Nuvemshop ☁️</span>
+                    <span className="text-[9px] font-mono opacity-60 normal-case font-normal">Sincronização & estoque</span>
+                  </div>
                 </button>
 
+                {/* Aba 5: Backup & Reset */}
                 <button
                   onClick={() => setActiveTab('backup')}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider text-left transition-all shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: activeTab === 'backup' ? (isDark ? '#2f3239' : '#ffffff') : 'transparent',
                     color: activeTab === 'backup' ? '#f97316' : (isDark ? '#b5bac3' : '#52525b'),
                     fontWeight: activeTab === 'backup' ? 'bold' : 'normal',
                   }}
                 >
-                  <Shield className="w-4 h-4" />
-                  <span>Backup & Reset</span>
+                  <Shield className="w-4 h-4 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">Backup & Reset</span>
+                    <span className="text-[9px] font-mono opacity-60 normal-case font-normal">Segurança dos dados</span>
+                  </div>
                 </button>
               </div>
 
               {/* Área de Conteúdo da Aba */}
               <div className="flex-1 p-5 sm:p-6 overflow-y-auto">
-                {/* ABA 1: CAMISAS DA ARARA */}
-                {activeTab === 'shirts' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
-                      <div>
-                        <h3 className="text-base font-bold uppercase font-sans">Camisas na Arara Metálica</h3>
-                        <p className="text-xs font-mono opacity-70">
-                          Edite os preços e nomes das camisetas exibidas na arara principal.
-                        </p>
-                      </div>
-                    </div>
+                {/* ABA DINÂMICA: EDITOR EXCLUSIVO DO TOPO ATIVO (1 ÚNICO EDITOR CONFORME O DESIGN ATUAL) */}
+                {isHeroTabActive && (
+                  <div className="space-y-5">
+                    {/* 1. SE O TOPO ATIVO FOR ARARA METÁLICA */}
+                    {currentHeroType === 'rail' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag className="w-4 h-4 text-orange-500" />
+                              <h3 className="text-base font-bold uppercase font-sans">Camisas na Arara Metálica</h3>
+                            </div>
+                            <p className="text-xs font-mono opacity-70 mt-0.5">
+                              Edite os preços, nomes e fotos das camisetas exibidas na arara principal.
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="space-y-3.5">
-                      {localShirts.map((shirt, idx) => (
-                        <div
-                          key={shirt.id}
-                          className="p-3.5 rounded-xl border flex flex-col gap-3 transition-colors"
-                          style={{
-                            backgroundColor: isDark ? '#27292f' : '#f9f8f4',
-                            borderColor: isDark ? '#363942' : '#e5e7eb',
-                          }}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              {/* Miniatura da Camisa */}
-                              <div
-                                className="w-12 h-14 rounded-lg overflow-hidden border shrink-0 flex items-center justify-center relative bg-black/10"
-                                style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
-                              >
-                                {shirt.image && typeof shirt.image === 'string' ? (
-                                  <img
-                                    src={shirt.image}
-                                    alt={shirt.name}
-                                    className="w-full h-full object-contain p-1"
-                                  />
-                                ) : (
-                                  <ImageIcon className="w-5 h-5 opacity-40" />
-                                )}
-                              </div>
+                        <div className="space-y-3.5">
+                          {localShirts.map((shirt, idx) => (
+                            <div
+                              key={shirt.id}
+                              className="p-3.5 rounded-xl border flex flex-col gap-3 transition-colors"
+                              style={{
+                                backgroundColor: isDark ? '#27292f' : '#f9f8f4',
+                                borderColor: isDark ? '#363942' : '#e5e7eb',
+                              }}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  {/* Miniatura da Camisa */}
+                                  <div
+                                    className="w-12 h-14 rounded-lg overflow-hidden border shrink-0 flex items-center justify-center relative bg-black/10"
+                                    style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
+                                  >
+                                    {shirt.image && typeof shirt.image === 'string' ? (
+                                      <img
+                                        src={shirt.image}
+                                        alt={shirt.name}
+                                        className="w-full h-full object-contain p-1"
+                                      />
+                                    ) : (
+                                      <ImageIcon className="w-5 h-5 opacity-40" />
+                                    )}
+                                  </div>
 
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-5 h-5 rounded bg-orange-600/20 text-orange-500 font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
-                                    {shirt.num}
-                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded bg-orange-600/20 text-orange-500 font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
+                                        {shirt.num}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={shirt.name}
+                                        onChange={(e) => handleShirtChange(idx, 'name', e.target.value)}
+                                        className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[240px]"
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-mono opacity-60 block mt-0.5">
+                                      {shirt.category}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                                  <span className="text-xs font-mono opacity-70">R$</span>
                                   <input
-                                    type="text"
-                                    value={shirt.name}
-                                    onChange={(e) => handleShirtChange(idx, 'name', e.target.value)}
-                                    className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-[240px]"
+                                    type="number"
+                                    step="0.01"
+                                    value={shirt.price}
+                                    onChange={(e) => handleShirtChange(idx, 'price', parseFloat(e.target.value) || 0)}
+                                    className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
+                                    style={{
+                                      backgroundColor: isDark ? '#18191d' : '#ffffff',
+                                      borderColor: isDark ? '#363942' : '#d4d4d8',
+                                    }}
                                   />
                                 </div>
-                                <span className="text-[10px] font-mono opacity-60 block mt-0.5">
-                                  {shirt.category}
-                                </span>
+                              </div>
+
+                              {/* Linha 2: Controle de Foto da Camisa (Upload ou Link Direto) */}
+                              <div
+                                className="pt-2 border-t flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-[11px] font-mono"
+                                style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}
+                              >
+                                <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 font-medium"
+                                  style={{
+                                    borderColor: isDark ? '#434752' : '#d4d4d8',
+                                    backgroundColor: isDark ? '#1c1e22' : '#ffffff',
+                                  }}
+                                >
+                                  <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                  <span>Upload Foto</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleShirtFileUpload(idx, e)}
+                                    className="hidden"
+                                  />
+                                </label>
+
+                                <input
+                                  type="text"
+                                  placeholder="ou cole a URL da foto (PNG transparente)"
+                                  value={shirt.image && typeof shirt.image === 'string' ? shirt.image : ''}
+                                  onChange={(e) => handleShirtChange(idx, 'image', e.target.value)}
+                                  className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none text-[11px]"
+                                  style={{
+                                    backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                    borderColor: isDark ? '#363942' : '#d4d4d8',
+                                  }}
+                                />
+
+                                {shirt.image && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShirtChange(idx, 'image', '')}
+                                    title="Limpar Foto"
+                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0 self-end sm:self-auto"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                            <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
-                              <span className="text-xs font-mono opacity-70">R$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={shirt.price}
-                                onChange={(e) => handleShirtChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                                className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border outline-none text-right"
+                    {/* 2. SE O TOPO ATIVO FOR PASSARELA 3D DE MANEQUINS */}
+                    {currentHeroType === 'runway' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-orange-500" />
+                              <h3 className="text-base font-bold uppercase font-sans">Manequins 3D & Looks da Passarela</h3>
+                            </div>
+                            <p className="text-xs font-mono opacity-70 mt-0.5">
+                              Envie fotos dos manequins em PNG com fundo transparente e escolha quais roupas da loja ele está vestindo nos pontos do peito e pernas.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {localLooks.map((look, lIdx) => {
+                            const allAvailableProducts = [...localShirts, ...localCatalog];
+                            const linkedProds = allAvailableProducts.filter((p) =>
+                              (look.productIds || []).includes(p.id)
+                            );
+                            const upperPin = (look.pins || []).find((p) => p.part === 'superior' || p.id === 'pin_superior' || p.id === 'p1');
+                            const lowerPin = (look.pins || []).find((p) => p.part === 'inferior' || p.id === 'pin_inferior' || p.id === 'p2');
+                            const isCustomImage = look.modelImage && typeof look.modelImage === 'string' && !look.modelImage.startsWith('/images/looks');
+
+                            return (
+                              <div
+                                key={look.id || lIdx}
+                                className="p-4 rounded-2xl border space-y-4 transition-colors"
                                 style={{
-                                  backgroundColor: isDark ? '#18191d' : '#ffffff',
+                                  backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                                  borderColor: isDark ? '#333742' : '#e5e7eb',
+                                }}
+                              >
+                                {/* Linha 1: Preview Transparente do Manequim + Upload */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                  {/* Caixa de Preview com Fundo Xadrez de Transparência */}
+                                  <div
+                                    className="w-20 h-28 sm:w-24 sm:h-32 rounded-xl border shrink-0 flex items-center justify-center overflow-hidden relative shadow-xs"
+                                    style={{
+                                      borderColor: isDark ? '#41454f' : '#d4d4d8',
+                                      backgroundImage: isDark
+                                        ? 'linear-gradient(45deg, #191b22 25%, transparent 25%), linear-gradient(-45deg, #191b22 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #191b22 75%), linear-gradient(-45deg, transparent 75%, #191b22 75%)'
+                                        : 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+                                      backgroundSize: '12px 12px',
+                                      backgroundColor: isDark ? '#262932' : '#f8f8f8',
+                                    }}
+                                  >
+                                    <img
+                                      src={look.modelImage && look.modelImage.trim().length > 15 ? look.modelImage : `/images/looks/model_${(lIdx % 6) + 1}.jpg`}
+                                      alt={look.name}
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = `/images/looks/model_${(lIdx % 6) + 1}.jpg`;
+                                      }}
+                                      className="w-full h-full object-contain p-1 relative z-10 select-none pointer-events-none"
+                                    />
+                                    {/* Indicadores dos Pontos no Preview */}
+                                    <div
+                                      title="Ponto 1: Peça Superior"
+                                      className="absolute top-[34%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-3.5 h-3.5 rounded-full bg-orange-500 border border-white flex items-center justify-center text-[8px] text-white font-bold shadow-md"
+                                    >
+                                      1
+                                    </div>
+                                    <div
+                                      title="Ponto 2: Peça Inferior"
+                                      className="absolute top-[68%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-3.5 h-3.5 rounded-full bg-orange-500 border border-white flex items-center justify-center text-[8px] text-white font-bold shadow-md"
+                                    >
+                                      2
+                                    </div>
+                                  </div>
+
+                                  {/* Info e Upload */}
+                                  <div className="flex-1 w-full space-y-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-6 h-6 rounded bg-orange-600/20 text-orange-500 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                                        {look.number || `0${lIdx + 1}`}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={look.name || ''}
+                                        onChange={(e) => handleLookChange(lIdx, 'name', e.target.value)}
+                                        placeholder="Nome do Look (ex: The City Suit)"
+                                        className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-sm"
+                                      />
+                                    </div>
+
+                                    {/* Botão de Upload PNG Transparente */}
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                                      <label
+                                        className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold shadow-xs"
+                                        style={{
+                                          borderColor: isDark ? '#434752' : '#d4d4d8',
+                                          backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                        }}
+                                      >
+                                        <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                        <span>Upload Manequim (PNG sem fundo)</span>
+                                        <input
+                                          type="file"
+                                          accept="image/png,image/webp,image/*"
+                                          onChange={(e) => handleLookPhotoUpload(lIdx, e)}
+                                          className="hidden"
+                                        />
+                                      </label>
+
+                                      <input
+                                        type="text"
+                                        placeholder="ou cole o link da foto (PNG transparente)"
+                                        value={isCustomImage ? look.modelImage : ''}
+                                        onChange={(e) => handleLookChange(lIdx, 'modelImage', e.target.value)}
+                                        className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
+                                        style={{
+                                          backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                          borderColor: isDark ? '#363942' : '#d4d4d8',
+                                        }}
+                                      />
+
+                                      {isCustomImage && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleLookChange(lIdx, 'modelImage', '')}
+                                          title="Restaurar Manequim Padrão"
+                                          className="p-2 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Linha 2: Configuração dos Pontos / Peças Vestidas */}
+                                <div className="pt-3 border-t space-y-3" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
+                                  <span className="text-[11px] font-mono font-bold uppercase text-orange-500 block">
+                                    Configurar Pontos do Manequim (Escolha as Peças Vestidas):
+                                  </span>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* PONTO 1: Peça Superior */}
+                                    <div
+                                      className="p-3 rounded-xl border space-y-1.5"
+                                      style={{
+                                        backgroundColor: isDark ? '#1a1c20' : '#f9f9f9',
+                                        borderColor: isDark ? '#363942' : '#e5e7eb',
+                                      }}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-mono font-bold uppercase flex items-center gap-1.5">
+                                          <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] flex items-center justify-center font-bold">1</span>
+                                          Ponto Superior (Tronco / Camiseta)
+                                        </span>
+                                        {upperPin?.productId && (
+                                          <span className="text-[9px] font-mono text-emerald-500 font-bold">Definido ✓</span>
+                                        )}
+                                      </div>
+
+                                      <select
+                                        value={upperPin?.productId || ''}
+                                        onChange={(e) => handleSetLookSlotPiece(lIdx, 'superior', e.target.value)}
+                                        className="w-full px-3 py-2 text-xs font-mono rounded-lg border outline-none cursor-pointer"
+                                        style={{
+                                          backgroundColor: isDark ? '#23252a' : '#ffffff',
+                                          borderColor: isDark ? '#363942' : '#d4d4d8',
+                                          color: isDark ? '#f4f5f7' : '#18181b',
+                                        }}
+                                      >
+                                        <option value="">-- Selecione a Peça Superior --</option>
+                                        {allAvailableProducts.map((p) => (
+                                          <option key={p.id} value={p.id}>
+                                            {p.name} · R$ {p.price?.toFixed(2)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    {/* PONTO 2: Peça Inferior */}
+                                    <div
+                                      className="p-3 rounded-xl border space-y-1.5"
+                                      style={{
+                                        backgroundColor: isDark ? '#1a1c20' : '#f9f9f9',
+                                        borderColor: isDark ? '#363942' : '#e5e7eb',
+                                      }}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-mono font-bold uppercase flex items-center gap-1.5">
+                                          <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] flex items-center justify-center font-bold">2</span>
+                                          Ponto Inferior (Pernas / Calça)
+                                        </span>
+                                        {lowerPin?.productId && (
+                                          <span className="text-[9px] font-mono text-emerald-500 font-bold">Definido ✓</span>
+                                        )}
+                                      </div>
+
+                                      <select
+                                        value={lowerPin?.productId || ''}
+                                        onChange={(e) => handleSetLookSlotPiece(lIdx, 'inferior', e.target.value)}
+                                        className="w-full px-3 py-2 text-xs font-mono rounded-lg border outline-none cursor-pointer"
+                                        style={{
+                                          backgroundColor: isDark ? '#23252a' : '#ffffff',
+                                          borderColor: isDark ? '#363942' : '#d4d4d8',
+                                          color: isDark ? '#f4f5f7' : '#18181b',
+                                        }}
+                                      >
+                                        <option value="">-- Selecione a Peça Inferior --</option>
+                                        {allAvailableProducts.map((p) => (
+                                          <option key={p.id} value={p.id}>
+                                            {p.name} · R$ {p.price?.toFixed(2)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  {/* Resumo das Peças Usadas no Look */}
+                                  {linkedProds.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                                      <span className="text-[10px] font-mono opacity-60">Peças na Gaveta "In This Look":</span>
+                                      {linkedProds.map((prod) => (
+                                        <span
+                                          key={prod.id}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono bg-orange-500/10 border border-orange-500/30 text-orange-500 font-bold"
+                                        >
+                                          ✓ {prod.name} (R$ {prod.price?.toFixed(2)})
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. SE O TOPO ATIVO FOR BANNER EDITORIAL */}
+                    {currentHeroType === 'editorial_banner' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-orange-500" />
+                              <h3 className="text-base font-bold uppercase font-sans">Banner Editorial (Full Width)</h3>
+                            </div>
+                            <p className="text-xs font-mono opacity-70 mt-0.5">
+                              Configure o banner de campanha principal, imagens, textos e chamada para ação.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div
+                          className="p-4 rounded-2xl border space-y-3.5 transition-colors"
+                          style={{
+                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                            borderColor: isDark ? '#333742' : '#e5e7eb',
+                          }}
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Tag Superior do Banner
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.banner?.tag || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'tag', e.target.value)}
+                                placeholder="ex: NEW COLLECTION · CONCRETE SEASON"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Texto do Botão de Ação
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.banner?.buttonText || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'buttonText', e.target.value)}
+                                placeholder="ex: Explorar Coleção"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
                                   borderColor: isDark ? '#363942' : '#d4d4d8',
                                 }}
                               />
                             </div>
                           </div>
 
-                          {/* Linha 2: Controle de Foto da Camisa (Upload ou Link Direto) */}
-                          <div
-                            className="pt-2 border-t flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-[11px] font-mono"
-                            style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}
-                          >
-                            <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 font-medium"
-                              style={{
-                                borderColor: isDark ? '#434752' : '#d4d4d8',
-                                backgroundColor: isDark ? '#1c1e22' : '#ffffff',
-                              }}
-                            >
-                              <Upload className="w-3.5 h-3.5 text-orange-500" />
-                              <span>Upload Foto</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleShirtFileUpload(idx, e)}
-                                className="hidden"
-                              />
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Título Principal da Campanha
                             </label>
-
                             <input
                               type="text"
-                              placeholder="ou cole a URL da foto (PNG transparente)"
-                              value={shirt.image && typeof shirt.image === 'string' ? shirt.image : ''}
-                              onChange={(e) => handleShirtChange(idx, 'image', e.target.value)}
-                              className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none text-[11px]"
+                              value={localConfig.heroConfig?.banner?.title || ''}
+                              onChange={(e) => handleHeroConfigChange('banner', 'title', e.target.value)}
+                              placeholder="ex: SILHUETAS ESTRUTURADAS"
+                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
                               style={{
                                 backgroundColor: isDark ? '#1a1c20' : '#ffffff',
                                 borderColor: isDark ? '#363942' : '#d4d4d8',
                               }}
                             />
+                          </div>
 
-                            {shirt.image && (
-                              <button
-                                type="button"
-                                onClick={() => handleShirtChange(idx, 'image', '')}
-                                title="Limpar Foto"
-                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0 self-end sm:self-auto"
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Subtítulo / Descrição da Campanha
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={localConfig.heroConfig?.banner?.subtitle || ''}
+                              onChange={(e) => handleHeroConfigChange('banner', 'subtitle', e.target.value)}
+                              placeholder="Descrição editorial..."
+                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Foto de Fundo do Banner (Upload ou Link)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <label
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
+                                style={{
+                                  borderColor: isDark ? '#434752' : '#d4d4d8',
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                }}
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                                <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                <span>Upload Imagem</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleHeroPhotoUpload('banner', 'imageUrl', e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <input
+                                type="text"
+                                placeholder="ou cole o link da foto do banner (URL)"
+                                value={localConfig.heroConfig?.banner?.imageUrl || ''}
+                                onChange={(e) => handleHeroConfigChange('banner', 'imageUrl', e.target.value)}
+                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* 4. SE O TOPO ATIVO FOR SPLIT 50/50 */}
+                    {currentHeroType === 'split_minimal' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag className="w-4 h-4 text-orange-500" />
+                              <h3 className="text-base font-bold uppercase font-sans">Split 50/50 Minimalista</h3>
+                            </div>
+                            <p className="text-xs font-mono opacity-70 mt-0.5">
+                              Configure o drop em destaque, especificações de engenharia têxtil e preço.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div
+                          className="p-4 rounded-2xl border space-y-3.5 transition-colors"
+                          style={{
+                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
+                            borderColor: isDark ? '#333742' : '#e5e7eb',
+                          }}
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Tag do Drop
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.split?.tag || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'tag', e.target.value)}
+                                placeholder="ex: DROP EXCLUSIVO"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Preço Especial (R$)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={localConfig.heroConfig?.split?.price || 149.90}
+                                onChange={(e) => handleHeroConfigChange('split', 'price', parseFloat(e.target.value) || 0)}
+                                className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                                Badge Flutuante
+                              </label>
+                              <input
+                                type="text"
+                                value={localConfig.heroConfig?.split?.badge || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'badge', e.target.value)}
+                                placeholder="ex: 100% ALGODÃO 260G"
+                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Nome da Peça em Destaque
+                            </label>
+                            <input
+                              type="text"
+                              value={localConfig.heroConfig?.split?.title || ''}
+                              onChange={(e) => handleHeroConfigChange('split', 'title', e.target.value)}
+                              placeholder="ex: HEAVYWEIGHT OVERSIZED TEE"
+                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Narrativa / Especificações
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={localConfig.heroConfig?.split?.subtitle || ''}
+                              onChange={(e) => handleHeroConfigChange('split', 'subtitle', e.target.value)}
+                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
+                              style={{
+                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                borderColor: isDark ? '#363942' : '#d4d4d8',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
+                              Foto da Peça / Modelo em Destaque
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <label
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
+                                style={{
+                                  borderColor: isDark ? '#434752' : '#d4d4d8',
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                }}
+                              >
+                                <Upload className="w-3.5 h-3.5 text-orange-500" />
+                                <span>Upload Imagem</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleHeroPhotoUpload('split', 'imageUrl', e)}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <input
+                                type="text"
+                                placeholder="ou cole o link da foto da peça (URL)"
+                                value={localConfig.heroConfig?.split?.imageUrl || ''}
+                                onChange={(e) => handleHeroConfigChange('split', 'imageUrl', e.target.value)}
+                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
+                                style={{
+                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
+                                  borderColor: isDark ? '#363942' : '#d4d4d8',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5. SE O TOPO ATIVO FOR BENTO GRID */}
+                    {currentHeroType === 'bento_grid' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-orange-500" />
+                              <h3 className="text-base font-bold uppercase font-sans">Bento Grid Mosaico</h3>
+                            </div>
+                            <p className="text-xs font-mono opacity-70 mt-0.5">
+                              Configure os 3 cards do mosaico com títulos, tags e categorias.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Card 1 */}
+                          <div className="p-3.5 rounded-xl border space-y-2" style={{ backgroundColor: isDark ? '#23252a' : '#fcfcfc', borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                            <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                              Card 1 (Destaque Principal)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                placeholder="Título (ex: DROP CONCRETE N° 01)"
+                                value={localConfig.heroConfig?.bento?.card1Title || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card1Title', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Tag (ex: LANÇAMENTO EXCLUSIVO)"
+                                value={localConfig.heroConfig?.bento?.card1Tag || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card1Tag', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Card 2 */}
+                          <div className="p-3.5 rounded-xl border space-y-2" style={{ backgroundColor: isDark ? '#23252a' : '#fcfcfc', borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                            <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                              Card 2 (Superior Direito - Calças)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                placeholder="Título (ex: CALÇAS & ALFAIATARIA)"
+                                value={localConfig.heroConfig?.bento?.card2Title || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card2Title', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Tag (ex: WIDE BARREL)"
+                                value={localConfig.heroConfig?.bento?.card2Tag || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card2Tag', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Card 3 */}
+                          <div className="p-3.5 rounded-xl border space-y-2" style={{ backgroundColor: isDark ? '#23252a' : '#fcfcfc', borderColor: isDark ? '#363942' : '#e5e7eb' }}>
+                            <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
+                              Card 3 (Inferior Direito - Camisetas)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                placeholder="Título (ex: CAMISETAS OVERSIZED)"
+                                value={localConfig.heroConfig?.bento?.card3Title || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card3Title', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Tag (ex: BESTSELLERS)"
+                                value={localConfig.heroConfig?.bento?.card3Tag || ''}
+                                onChange={(e) => handleHeroConfigChange('bento', 'card3Tag', e.target.value)}
+                                className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
+                                style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -868,178 +1548,7 @@ export function AdminModal({
                   </div>
                 )}
 
-                {/* ABA 3: PASSARELA 3D (LOOKS / TRY THE LOOK) */}
-                {activeTab === 'looks' && (
-                  <div className="space-y-5">
-                    <div className="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-orange-500" />
-                          <h3 className="text-base font-bold uppercase font-sans">Passarela 3D Giratória (Shop the Look)</h3>
-                        </div>
-                        <p className="text-xs font-mono opacity-70 mt-0.5">
-                          Configure os modelos, envie fotos de corpo inteiro e vincule as roupas que compõem cada look.
-                        </p>
-                      </div>
-
-                      {localConfig.heroType !== 'runway' && (
-                        <button
-                          type="button"
-                          onClick={() => setLocalConfig({ ...localConfig, heroType: 'runway' })}
-                          className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-orange-600 hover:bg-orange-500 text-white cursor-pointer transition-transform active:scale-95 shrink-0 flex items-center gap-1.5 shadow-xs"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Ativar Passarela no Topo</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {localLooks.map((look, lIdx) => {
-                        const allAvailableProducts = [...localShirts, ...localCatalog];
-                        const linkedProds = allAvailableProducts.filter((p) =>
-                          (look.productIds || []).includes(p.id)
-                        );
-
-                        return (
-                          <div
-                            key={look.id || lIdx}
-                            className="p-4 rounded-2xl border space-y-4 transition-colors"
-                            style={{
-                              backgroundColor: isDark ? '#23252a' : '#fcfcfc',
-                              borderColor: isDark ? '#333742' : '#e5e7eb',
-                            }}
-                          >
-                            {/* Linha 1: Foto do Modelo + Informações do Look */}
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                              {/* Miniatura do Modelo */}
-                              <div
-                                className="w-16 h-22 sm:w-20 sm:h-26 rounded-xl border shrink-0 flex items-center justify-center overflow-hidden bg-black/10 relative"
-                                style={{ borderColor: isDark ? '#41454f' : '#d4d4d8' }}
-                              >
-                                {look.modelImage && typeof look.modelImage === 'string' && !look.modelImage.startsWith('/images/looks') ? (
-                                  <img
-                                    src={look.modelImage}
-                                    alt={look.name}
-                                    className="w-full h-full object-contain p-1"
-                                  />
-                                ) : (
-                                  <span className="text-[10px] font-mono font-bold opacity-40 uppercase text-center p-1">
-                                    Modelo 0{lIdx + 1}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Campos: Título, Categoria e Foto */}
-                              <div className="flex-1 w-full space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-6 h-6 rounded bg-orange-600/20 text-orange-500 font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                                    {look.number || `0${lIdx + 1}`}
-                                  </span>
-                                  <input
-                                    type="text"
-                                    value={look.name || ''}
-                                    onChange={(e) => handleLookChange(lIdx, 'name', e.target.value)}
-                                    placeholder="Nome do Look (ex: The City Suit)"
-                                    className="font-bold text-xs font-sans uppercase bg-transparent border-b border-dashed border-zinc-500 outline-none w-full max-w-sm"
-                                  />
-                                </div>
-
-                                <input
-                                  type="text"
-                                  value={look.description || ''}
-                                  onChange={(e) => handleLookChange(lIdx, 'description', e.target.value)}
-                                  placeholder="Descrição editorial do look..."
-                                  className="w-full text-xs font-mono opacity-80 bg-transparent border-b border-zinc-600/30 outline-none"
-                                />
-
-                                {/* Upload / URL da Foto do Modelo */}
-                                <div className="flex items-center gap-2 pt-1">
-                                  <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-[11px] font-mono font-bold"
-                                    style={{
-                                      borderColor: isDark ? '#434752' : '#d4d4d8',
-                                      backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                    }}
-                                  >
-                                    <Upload className="w-3.5 h-3.5 text-orange-500" />
-                                    <span>Upload Modelo</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => handleLookPhotoUpload(lIdx, e)}
-                                      className="hidden"
-                                    />
-                                  </label>
-
-                                  <input
-                                    type="text"
-                                    placeholder="ou link direto da foto do modelo (PNG/JPG)"
-                                    value={look.modelImage && !look.modelImage.startsWith('/images/looks') ? look.modelImage : ''}
-                                    onChange={(e) => handleLookChange(lIdx, 'modelImage', e.target.value)}
-                                    className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none text-[11px] font-mono"
-                                    style={{
-                                      backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                      borderColor: isDark ? '#363942' : '#d4d4d8',
-                                    }}
-                                  />
-
-                                  {look.modelImage && !look.modelImage.startsWith('/images/looks') && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleLookChange(lIdx, 'modelImage', '')}
-                                      title="Restaurar Modelo Padrão"
-                                      className="p-1.5 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Linha 2: Peças Vinculadas ao Look */}
-                            <div className="pt-2 border-t" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[11px] font-mono font-bold uppercase text-orange-500">
-                                  Roupas Vestidas Neste Look ({linkedProds.length} selecionadas):
-                                </span>
-                                <span className="text-[10px] font-mono opacity-60">
-                                  Clique para marcar ou desmarcar
-                                </span>
-                              </div>
-
-                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 rounded-xl border bg-black/5" style={{ borderColor: isDark ? '#363942' : '#e4e4e7' }}>
-                                {allAvailableProducts.map((prod) => {
-                                  const isSelected = (look.productIds || []).includes(prod.id);
-                                  return (
-                                    <button
-                                      key={prod.id}
-                                      type="button"
-                                      onClick={() => handleToggleProductInLook(lIdx, prod.id)}
-                                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-mono uppercase transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                        isSelected
-                                          ? 'bg-orange-600 text-white border-orange-500 font-bold shadow-xs'
-                                          : isDark
-                                          ? 'bg-zinc-800/80 text-zinc-300 border-zinc-700/60 hover:bg-zinc-700'
-                                          : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100'
-                                      }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? '#ffffff' : '#f97316' }} />
-                                      <span className="truncate max-w-[140px]">{prod.name}</span>
-                                      <span className="opacity-80">R${prod.price?.toFixed(0)}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* ABA 4: CONFIGURAÇÕES DE ESTILO, HERO & TEMAS */}
+                {/* ABA 3: CONFIGURAÇÕES DE ESTILO, HERO & TEMAS */}
                 {activeTab === 'settings' && (
                   <div className="space-y-6">
                     <div className="border-b pb-3" style={{ borderColor: isDark ? '#33363e' : '#e4e4e7' }}>
@@ -1263,366 +1772,42 @@ export function AdminModal({
                         </div>
                       </div>
 
-                      {/* PAINEL DE PERSONALIZAÇÃO ESPECÍFICO DO LAYOUT SELECIONADO */}
-                      {localConfig.heroType === 'editorial_banner' && (
-                        <div
-                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
-                          style={{
-                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
-                            borderColor: isDark ? '#333742' : '#e5e7eb',
-                          }}
-                        >
-                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
-                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Personalizar Banner Editorial
-                            </span>
+                      {/* ATALHO DIRETO PARA O EDITOR EXCLUSIVO DO LAYOUT ATIVO */}
+                      <div
+                        className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3 transition-colors"
+                        style={{
+                          backgroundColor: isDark ? '#23252a' : '#f9f8f4',
+                          borderColor: isDark ? '#363942' : '#e4e4e7',
+                        }}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+                            <ActiveHeroIcon className="w-5 h-5" />
                           </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                                Tag Superior do Banner
-                              </label>
-                              <input
-                                type="text"
-                                value={localConfig.heroConfig?.banner?.tag || ''}
-                                onChange={(e) => handleHeroConfigChange('banner', 'tag', e.target.value)}
-                                placeholder="ex: NEW COLLECTION · CONCRETE SEASON"
-                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                                Texto do Botão de Ação
-                              </label>
-                              <input
-                                type="text"
-                                value={localConfig.heroConfig?.banner?.buttonText || ''}
-                                onChange={(e) => handleHeroConfigChange('banner', 'buttonText', e.target.value)}
-                                placeholder="ex: Explorar Coleção"
-                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Título Principal da Campanha
-                            </label>
-                            <input
-                              type="text"
-                              value={localConfig.heroConfig?.banner?.title || ''}
-                              onChange={(e) => handleHeroConfigChange('banner', 'title', e.target.value)}
-                              placeholder="ex: SILHUETAS ESTRUTURADAS"
-                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
-                              style={{
-                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                borderColor: isDark ? '#363942' : '#d4d4d8',
-                              }}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Subtítulo / Descrição da Campanha
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={localConfig.heroConfig?.banner?.subtitle || ''}
-                              onChange={(e) => handleHeroConfigChange('banner', 'subtitle', e.target.value)}
-                              placeholder="Descrição editorial..."
-                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
-                              style={{
-                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                borderColor: isDark ? '#363942' : '#d4d4d8',
-                              }}
-                            />
-                          </div>
-
-                          {/* Foto do Banner */}
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Foto de Fundo do Banner (Upload ou Link)
-                            </label>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <label
-                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
-                                style={{
-                                  borderColor: isDark ? '#434752' : '#d4d4d8',
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                }}
-                              >
-                                <Upload className="w-3.5 h-3.5 text-orange-500" />
-                                <span>Upload Imagem</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handleHeroPhotoUpload('banner', 'imageUrl', e)}
-                                  className="hidden"
-                                />
-                              </label>
-
-                              <input
-                                type="text"
-                                placeholder="ou cole o link da foto do banner (URL)"
-                                value={localConfig.heroConfig?.banner?.imageUrl || ''}
-                                onChange={(e) => handleHeroConfigChange('banner', 'imageUrl', e.target.value)}
-                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
+                              <span className="text-xs font-mono font-bold uppercase text-orange-500">
+                                Layout Selecionado: {activeHeroInfo.name}
+                              </span>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-bold">
+                                Salvo
+                              </span>
                             </div>
+                            <p className="text-[11px] font-mono opacity-70 truncate mt-0.5">
+                              As peças e fotos de todos os layouts ficam sempre preservadas ao alternar.
+                            </p>
                           </div>
                         </div>
-                      )}
 
-                      {/* PAINEL DE PERSONALIZAÇÃO SPLIT 50/50 */}
-                      {localConfig.heroType === 'split_minimal' && (
-                        <div
-                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
-                          style={{
-                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
-                            borderColor: isDark ? '#333742' : '#e5e7eb',
-                          }}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('hero_editor')}
+                          className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-orange-600 hover:bg-orange-500 text-white cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs active:scale-95"
                         >
-                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
-                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                              Personalizar Split 50/50 Minimalista
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                                Tag do Drop
-                              </label>
-                              <input
-                                type="text"
-                                value={localConfig.heroConfig?.split?.tag || ''}
-                                onChange={(e) => handleHeroConfigChange('split', 'tag', e.target.value)}
-                                placeholder="ex: DROP EXCLUSIVO"
-                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                                Preço Especial (R$)
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={localConfig.heroConfig?.split?.price || 149.90}
-                                onChange={(e) => handleHeroConfigChange('split', 'price', parseFloat(e.target.value) || 0)}
-                                className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl border outline-none"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                                Badge Flutuante
-                              </label>
-                              <input
-                                type="text"
-                                value={localConfig.heroConfig?.split?.badge || ''}
-                                onChange={(e) => handleHeroConfigChange('split', 'badge', e.target.value)}
-                                placeholder="ex: 100% ALGODÃO 260G"
-                                className="w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Nome da Peça em Destaque
-                            </label>
-                            <input
-                              type="text"
-                              value={localConfig.heroConfig?.split?.title || ''}
-                              onChange={(e) => handleHeroConfigChange('split', 'title', e.target.value)}
-                              placeholder="ex: HEAVYWEIGHT OVERSIZED TEE"
-                              className="w-full px-3 py-2 text-xs font-sans font-bold uppercase rounded-xl border outline-none"
-                              style={{
-                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                borderColor: isDark ? '#363942' : '#d4d4d8',
-                              }}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Narrativa / Especificações
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={localConfig.heroConfig?.split?.subtitle || ''}
-                              onChange={(e) => handleHeroConfigChange('split', 'subtitle', e.target.value)}
-                              className="w-full px-3 py-2 text-xs font-sans rounded-xl border outline-none resize-none"
-                              style={{
-                                backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                borderColor: isDark ? '#363942' : '#d4d4d8',
-                              }}
-                            />
-                          </div>
-
-                          {/* Foto de Destaque */}
-                          <div>
-                            <label className="text-[10px] font-mono uppercase opacity-70 block mb-1">
-                              Foto da Peça / Modelo em Destaque
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <label
-                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border cursor-pointer hover:bg-orange-500/10 hover:border-orange-500 transition-colors shrink-0 text-xs font-mono font-bold"
-                                style={{
-                                  borderColor: isDark ? '#434752' : '#d4d4d8',
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                }}
-                              >
-                                <Upload className="w-3.5 h-3.5 text-orange-500" />
-                                <span>Upload Imagem</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handleHeroPhotoUpload('split', 'imageUrl', e)}
-                                  className="hidden"
-                                />
-                              </label>
-
-                              <input
-                                type="text"
-                                placeholder="ou cole o link da foto da peça (URL)"
-                                value={localConfig.heroConfig?.split?.imageUrl || ''}
-                                onChange={(e) => handleHeroConfigChange('split', 'imageUrl', e.target.value)}
-                                className="flex-1 px-3 py-2 rounded-xl border outline-none text-xs font-mono"
-                                style={{
-                                  backgroundColor: isDark ? '#1a1c20' : '#ffffff',
-                                  borderColor: isDark ? '#363942' : '#d4d4d8',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* PAINEL DE PERSONALIZAÇÃO BENTO GRID */}
-                      {localConfig.heroType === 'bento_grid' && (
-                        <div
-                          className="p-4 rounded-2xl border space-y-3.5 transition-colors mt-3"
-                          style={{
-                            backgroundColor: isDark ? '#23252a' : '#fcfcfc',
-                            borderColor: isDark ? '#333742' : '#e5e7eb',
-                          }}
-                        >
-                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: isDark ? '#333742' : '#e5e7eb' }}>
-                            <span className="text-xs font-mono font-bold uppercase text-orange-500 flex items-center gap-1.5">
-                              <Layers className="w-3.5 h-3.5" />
-                              Personalizar Cards do Bento Grid
-                            </span>
-                          </div>
-
-                          <div className="space-y-3">
-                            {/* Card 1 */}
-                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
-                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
-                                Card 1 (Destaque Grande)
-                              </span>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="Título (ex: DROP CONCRETE N° 01)"
-                                  value={localConfig.heroConfig?.bento?.card1Title || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card1Title', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Tag (ex: LANÇAMENTO EXCLUSIVO)"
-                                  value={localConfig.heroConfig?.bento?.card1Tag || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card1Tag', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Card 2 */}
-                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
-                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
-                                Card 2 (Superior Direito - Calças)
-                              </span>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="Título (ex: CALÇAS & ALFAIATARIA)"
-                                  value={localConfig.heroConfig?.bento?.card2Title || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card2Title', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Tag (ex: WIDE BARREL)"
-                                  value={localConfig.heroConfig?.bento?.card2Tag || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card2Tag', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Card 3 */}
-                            <div className="p-3 rounded-xl border bg-black/5 space-y-2" style={{ borderColor: isDark ? '#363942' : '#e5e7eb' }}>
-                              <span className="text-[10px] font-mono font-bold uppercase text-orange-500">
-                                Card 3 (Inferior Direito - Camisetas)
-                              </span>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="Título (ex: CAMISETAS OVERSIZED)"
-                                  value={localConfig.heroConfig?.bento?.card3Title || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card3Title', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Tag (ex: BESTSELLERS)"
-                                  value={localConfig.heroConfig?.bento?.card3Tag || ''}
-                                  onChange={(e) => handleHeroConfigChange('bento', 'card3Tag', e.target.value)}
-                                  className="px-2.5 py-1.5 text-xs font-mono rounded-lg border outline-none"
-                                  style={{ backgroundColor: isDark ? '#1a1c20' : '#ffffff', borderColor: isDark ? '#363942' : '#d4d4d8' }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                          <span>Configurar Peças deste Layout</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* SISTEMA ESTRATÉGICO DE TEMAS & CORES */}

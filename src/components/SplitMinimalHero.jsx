@@ -158,3 +158,4 @@ export function SplitMinimalHero({
     </section>
   );
 }
+

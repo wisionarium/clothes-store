@@ -154,13 +154,40 @@ export function saveStoredCatalog(catalog) {
   }
 }
 
-// Carrega os looks da passarela 3D
+// Helper para higienizar e garantir que os manequins nunca fiquem com fotos quebradas ou corrompidas
+export function sanitizeLooks(looksArray) {
+  if (!Array.isArray(looksArray) || looksArray.length === 0) return DEFAULT_LOOKS;
+  return DEFAULT_LOOKS.map((defaultItem, idx) => {
+    const item = looksArray[idx] || {};
+    let modelImg = item.modelImage;
+    if (typeof modelImg === 'string') {
+      // Corrige qualquer link que usava .png para os modelos de estúdio em .jpg
+      if (modelImg.startsWith('/images/looks/') && modelImg.endsWith('.png')) {
+        modelImg = modelImg.replace('.png', '.jpg');
+      }
+    }
+    const hasValidImage =
+      typeof modelImg === 'string' &&
+      modelImg.trim().length > 15 &&
+      (modelImg.startsWith('data:image') || modelImg.startsWith('http') || modelImg.startsWith('/images/looks/'));
+
+    return {
+      ...defaultItem,
+      ...item,
+      modelImage: hasValidImage ? modelImg : defaultItem.modelImage,
+      productIds: Array.isArray(item.productIds) && item.productIds.length > 0 ? item.productIds : defaultItem.productIds,
+      pins: Array.isArray(item.pins) && item.pins.length > 0 ? item.pins : defaultItem.pins,
+    };
+  });
+}
+
+// Carrega os looks da passarela 3D com manequins
 export function getStoredLooks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.LOOKS);
     if (!raw) return DEFAULT_LOOKS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_LOOKS;
+    return sanitizeLooks(parsed);
   } catch {
     return DEFAULT_LOOKS;
   }
@@ -168,7 +195,8 @@ export function getStoredLooks() {
 
 export function saveStoredLooks(looks) {
   try {
-    localStorage.setItem(STORAGE_KEYS.LOOKS, JSON.stringify(looks));
+    const clean = sanitizeLooks(looks);
+    localStorage.setItem(STORAGE_KEYS.LOOKS, JSON.stringify(clean));
   } catch (e) {
     console.error('Erro ao salvar looks:', e);
   }
@@ -223,9 +251,10 @@ export async function fetchRemoteStoreData() {
       }
       if (shirts && Array.isArray(shirts) && shirts.length > 0) saveStoredShirts(shirts);
       if (catalog && Array.isArray(catalog) && catalog.length > 0) saveStoredCatalog(catalog);
-      if (looks && Array.isArray(looks) && looks.length > 0) saveStoredLooks(looks);
+      const cleanLooks = looks && Array.isArray(looks) && looks.length > 0 ? sanitizeLooks(looks) : null;
+      if (cleanLooks) saveStoredLooks(cleanLooks);
 
-      return { config, shirts, catalog, looks };
+      return { config, shirts, catalog, looks: cleanLooks };
     }
     return null;
   } catch (err) {

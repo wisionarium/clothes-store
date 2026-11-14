@@ -87,10 +87,10 @@ export function RunwayLookbook({
     const duration = Date.now() - dragTimeStartRef.current;
     const velocity = Math.abs(dragOffset) / Math.max(duration, 1);
 
-    // Se houve arrasto significativo ou flick rápido
-    if (dragOffset > 35 || (dragOffset > 15 && velocity > 0.4)) {
+    // Movimentação bem curtinha para girar com facilidade e pouco esforço
+    if (dragOffset > 15 || (dragOffset > 6 && velocity > 0.15)) {
       handlePrev();
-    } else if (dragOffset < -35 || (dragOffset < -15 && velocity > 0.4)) {
+    } else if (dragOffset < -15 || (dragOffset < -6 && velocity > 0.15)) {
       handleNext();
     }
     setDragOffset(0);
@@ -116,9 +116,10 @@ export function RunwayLookbook({
       const duration = Date.now() - dragTimeStartRef.current;
       const velocity = Math.abs(finalDiff) / Math.max(duration, 1);
 
-      if (finalDiff > 45 || (finalDiff > 20 && velocity > 0.4)) {
+      // Movimento suave e curto no mouse para troca rápida
+      if (finalDiff > 18 || (finalDiff > 8 && velocity > 0.15)) {
         handlePrev();
-      } else if (finalDiff < -45 || (finalDiff < -20 && velocity > 0.4)) {
+      } else if (finalDiff < -18 || (finalDiff < -8 && velocity > 0.15)) {
         handleNext();
       }
       setDragOffset(0);
@@ -135,8 +136,8 @@ export function RunwayLookbook({
 
   // Parâmetros da roda circular 3D
   const angleStep = 360 / totalLooks; // 60° para 6 looks
-  // Ângulo contínuo que gira a roda durante o arrasto
-  const dragAngleOffset = (dragOffset / (isMobile ? 180 : 280)) * angleStep;
+  // Resposta rápida do ângulo de arrasto: rotação com deslocamento curto
+  const dragAngleOffset = (dragOffset / (isMobile ? 55 : 75)) * angleStep;
   const currentWheelAngle = -activeIndex * angleStep + dragAngleOffset;
 
   return (
@@ -258,12 +259,17 @@ export function RunwayLookbook({
                 style={{ opacity: 0.25 + depthNorm * 0.35 }}
               />
 
-              {/* Foto Real do Modelo Streetwear */}
+              {/* Foto do Manequim Streetwear (PNG sem fundo ou padrão) */}
               <div className="relative w-full h-[320px] sm:h-[420px] md:h-[480px] flex items-center justify-center">
                 <img
-                  src={look.modelImage || `/images/looks/model_${(idx % 6) + 1}.jpg`}
+                  src={look.modelImage && look.modelImage.trim().length > 15 ? look.modelImage : `/images/looks/model_${(idx % 6) + 1}.jpg`}
                   alt={look.name}
-                  className="w-full h-full object-contain drop-shadow-xl pointer-events-none select-none rounded-lg"
+                  onError={(e) => {
+                    // Fallback imediato se o link externo ou base64 estiver corrompido
+                    e.target.onerror = null;
+                    e.target.src = `/images/looks/model_${(idx % 6) + 1}.jpg`;
+                  }}
+                  className="w-full h-full object-contain drop-shadow-2xl pointer-events-none select-none"
                   draggable={false}
                 />
 
